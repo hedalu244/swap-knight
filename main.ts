@@ -97,7 +97,7 @@ function isReachableCoord(coord: Coord, board: Board): boolean {
 
 //盤面をシャッフル
 function shuffle(board: Board, count: number = 0, prevBoard: Board = board): Board {
-    if (count < 0) {
+    if (count <= 0) {
         if (isCompleted(board.cells))
             return shuffle(board, board.cells.length * 5 + Math.random() * 5);
         return board;
