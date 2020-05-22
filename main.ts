@@ -1,4 +1,3 @@
-
 type Piece = "blank" | "knight" | "pawn" | "rook" | "bishop";
 
 type Cell = {
@@ -32,10 +31,17 @@ const knightMove = [
     { x: -1, y: 2 },
 ];
 
-function createBoard(initial: (Piece | undefined)[][], player: Coord): Board {
+function flat<T>(array: T[][]): T[] {
+    return array.reduce((prev, cur) => [...prev, ...cur], ([] as T[]));
+}
+
+function createBoard(initial: readonly (Piece | undefined)[][]): Board {
+    const cells: Cell[][] = initial.map(row => row.map(piece => piece !== undefined ? { correct: piece, current: piece } : undefined));
+    const knightSearch = flat(initial.map((row, x) => row.map((piece, y) => ({ piece, coord: { x, y } })))).find(x => x.piece === "knight");
+    if (knightSearch === undefined) throw new Error("board must have a knight");
     return {
-        cells: initial.map(row => row.map(x => x === undefined ? undefined : { correct: x, current: x })),
-        player: player,
+        cells,
+        player: knightSearch.coord,
     };
 }
 
@@ -49,7 +55,7 @@ function setCell(cells: Cell[][], coord: Coord, piece: Piece): Cell[][] {
 //範囲外ならundefined
 function getCell(cells: Cell[][], coord: Coord): Cell {
     const row = cells[coord.x];
-    if (row === undefined) return undefined
+    if (row === undefined) return undefined;
     return row[coord.y];
 }
 
@@ -81,6 +87,12 @@ function move(board: Board, to: Coord): Board | null {
         player: to,
         cells: setCell(setCell(board.cells, board.player, toCell.current), to, "knight"),
     };
+}
+
+//一歩で移動できるところにあるか
+function isReachableCoord(coord: Coord, board: Board): boolean {
+    return getCell(board.cells, coord) !== undefined &&
+        knightMove.some(dir => coord.x - board.player.x == dir.x && coord.y - board.player.y == dir.y);
 }
 
 //盤面をシャッフル
@@ -124,18 +136,103 @@ interface Level {
     readonly height: number,
 }
 
+interface Pos {
+    readonly x: number;
+    readonly y: number;
+}
+
+function coordToPos(coord: Coord, game: Game): Pos {
+    return {
+        x: coord.x * game.cellSize + game.originX,
+        y: coord.y * game.cellSize + game.originY,
+    };
+}
+
+function posToCoord(pos: Pos, game: Game): Coord {
+    return {
+        x: Math.round((pos.x - game.originX) / game.cellSize),
+        y: Math.round((pos.y - game.originY) / game.cellSize),
+    };
+}
+
+function createGame(level: Level): Game {
+    const maxBoardWidth = 300;
+    const maxBoardHeight = 300;
+    const centerPosX = 150;
+    const centerPosY = 200;
+
+    const board = shuffle(createBoard(level.initial));
+
+    const cellSize = Math.min(maxBoardWidth / level.width, maxBoardHeight / level.height);
+    const originX = centerPosX - cellSize * (level.width - 1) / 2;
+    const originY = centerPosY - cellSize * (level.height - 1) / 2;
+
+    return {
+        board,
+        level,
+        cellSize,
+        originX,
+        originY,
+    };
+}
+
 interface Game {
     board: Board,
     level: Level,
+    cellSize: number,
+    originX: number,
+    originY: number,
 }
 
 function draw(context: CanvasRenderingContext2D, game: Game) {
     game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
-        if(cell !== undefined)
-            context.fillText(cell.correct, x -  game.level.width / 2, y -  game.level.height / 2);
+        if (cell !== undefined) {
+            if (isReachableCoord({ x, y }, game.board))
+                context.fillStyle = "red";
+            else if ((x + y) % 2 == 0)
+                context.fillStyle = "lightgray";
+            else
+                context.fillStyle = "darkgray";
+
+            const pos = coordToPos({ x, y }, game);
+            context.fillRect(pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+
+            context.fillStyle = "black";
+            context.fillText(cell.current, pos.x, pos.y);
+        }
     }));
+    requestAnimationFrame(() => draw(context, game));
+}
+
+function click(pos: Pos, game: Game) {
+    const coord = posToCoord(pos, game);
+    if (isReachableCoord(coord, game.board)) {
+        const board2 = move(game.board, coord);
+        if (board2 !== null) game.board = board2;
+    }
 }
 
 window.onload = () => {
-    
-}
+    const canvas = document.getElementById("canvas");
+    if (canvas === null || !(canvas instanceof HTMLCanvasElement))
+        throw new Error("canvas not found");
+
+    const context = canvas.getContext("2d");
+    if (context === null)
+        throw new Error("context2d not found");
+
+    canvas.addEventListener("click", (event) => {
+        click({ x: event.offsetX, y: event.offsetY }, game);
+    });
+    const level: Level = {
+        initial: [
+            ["knight", "blank", "blank"],
+            ["pawn", "blank", "blank"],
+            ["pawn", "blank", "blank"],
+        ],
+        width: 3,
+        height: 3,
+    };
+    const game = createGame(level);
+    draw(context, game);
+};
