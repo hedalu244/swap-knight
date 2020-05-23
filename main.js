@@ -192,9 +192,10 @@ function createGame(level) {
         level,
         cellSize,
         prevPlayer: board.player,
-        elapse: 0,
+        moveElapse: 0,
         originX,
         originY,
+        startCount: 0,
     };
 }
 function drawGlid(screen, game, resources) {
@@ -226,7 +227,7 @@ function drawPieces(screen, game, resources) {
             }
             if (x == game.board.player.x && y == game.board.player.y) {
                 const prevPos = coordToPos(game.prevPlayer, game);
-                const animatedPos = animation(prevPos, pos, game.elapse);
+                const animatedPos = animation(prevPos, pos, game.moveElapse);
                 screen.drawImage(resources.player, animatedPos.x - game.cellSize / 2, animatedPos.y - game.cellSize / 2, game.cellSize, game.cellSize);
             }
             else if (cell.current !== "blank") {
@@ -243,6 +244,14 @@ function drawPieces(screen, game, resources) {
         };
     }
 }
+function drawGame(context, game, resources) {
+    game.moveElapse++;
+    drawGlid(context, game, resources);
+    drawPieces(context, game, resources);
+    context.fillStyle = "black";
+    if (30 < game.moveElapse && game.board.completed)
+        context.fillText("completed", 100, 100);
+}
 function createMenu() {
     return {
         levels: [{
@@ -255,31 +264,61 @@ function createMenu() {
                 height: 3,
             }],
         game: null,
+        startCount: 0,
+        gameEndCount: null,
     };
+}
+function drawMenu(context, menu, resources) {
+    context.fillStyle = "black";
+    context.fillText("menu", 100, 100);
+}
+function fade(context, fade) {
+    fade = Math.min(1, Math.max(0, fade));
+    if (fade === 0)
+        return;
+    context.fillStyle = "white";
+    context.globalAlpha = fade;
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+    context.globalAlpha = 1;
 }
 function draw(context, menu, resources) {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    menu.startCount++;
+    if (menu.gameEndCount !== null)
+        menu.gameEndCount++;
     if (menu.game === null) {
-        context.fillStyle = "black";
-        context.fillText("menu", 100, 100);
+        menu.game = null;
+        drawMenu(context, menu, resources);
+        fade(context, (60 - menu.startCount) / 30);
+        if (menu.gameEndCount !== null)
+            fade(context, (60 - menu.gameEndCount) / 30);
     }
     else {
-        menu.game.elapse++;
-        drawGlid(context, menu.game, resources);
-        drawPieces(context, menu.game, resources);
-        context.fillStyle = "black";
-        if (30 < menu.game.elapse && menu.game.board.completed)
-            context.fillText("completed", 100, 100);
+        menu.game.startCount++;
+        if (menu.game.startCount < 30) {
+            //ゲーム開始直後はメニューのフェードアウト
+            drawMenu(context, menu, resources);
+            fade(context, menu.game.startCount / 30);
+        }
+        else {
+            drawGame(context, menu.game, resources);
+            fade(context, (60 - menu.game.startCount) / 30);
+            if (menu.gameEndCount !== null)
+                fade(context, menu.gameEndCount / 30);
+            if (menu.gameEndCount === 30)
+                menu.game = null;
+        }
     }
     requestAnimationFrame(() => draw(context, menu, resources));
 }
 function click(pos, menu) {
     if (menu.game === null) {
         menu.game = createGame(menu.levels[0]);
+        menu.gameEndCount = null;
     }
     else {
         if (menu.game.board.completed) {
-            menu.game = null;
+            menu.gameEndCount = 0;
             return;
         }
         const coord = posToCoord(pos, menu.game);
@@ -289,7 +328,7 @@ function click(pos, menu) {
         if (board2 !== null) {
             menu.game.prevPlayer = menu.game.board.player;
             menu.game.board = board2;
-            menu.game.elapse = 0;
+            menu.game.moveElapse = 0;
         }
     }
 }

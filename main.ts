@@ -245,9 +245,10 @@ function createGame(level: Level): Game {
         level,
         cellSize,
         prevPlayer: board.player,
-        elapse: 0,
+        moveElapse: 0,
         originX,
         originY,
+        startCount: 0,
     };
 }
 
@@ -255,10 +256,11 @@ interface Game {
     board: Board,
     level: Level,
     prevPlayer: Coord,
-    elapse: number,
+    moveElapse: number,
     cellSize: number,
     originX: number,
     originY: number,
+    startCount: number,
 }
 
 function drawGlid(screen: Screen2D, game: Game, resources: Resources) {
@@ -309,7 +311,7 @@ function drawPieces(screen: CanvasRenderingContext2D, game: Game, resources: Res
 
             if (x == game.board.player.x && y == game.board.player.y) {
                 const prevPos = coordToPos(game.prevPlayer, game);
-                const animatedPos = animation(prevPos, pos, game.elapse);
+                const animatedPos = animation(prevPos, pos, game.moveElapse);
                 screen.drawImage(resources.player,
                     animatedPos.x - game.cellSize / 2,
                     animatedPos.y - game.cellSize / 2,
@@ -335,9 +337,22 @@ function drawPieces(screen: CanvasRenderingContext2D, game: Game, resources: Res
     }
 }
 
+function drawGame(context: CanvasRenderingContext2D, game: Game, resources: Resources) {
+    game.moveElapse++;
+
+    drawGlid(context, game, resources);
+    drawPieces(context, game, resources);
+
+    context.fillStyle = "black";
+    if (30 < game.moveElapse && game.board.completed)
+        context.fillText("completed", 100, 100);
+}
+
 interface Menu {
     levels: Level[];
     game: Game | null;
+    startCount: number,
+    gameEndCount: number | null;
 }
 
 function createMenu(): Menu {
@@ -352,33 +367,58 @@ function createMenu(): Menu {
             height: 3,
         }],
         game: null,
+        startCount: 0,
+        gameEndCount: null,
     };
 }
 
+function drawMenu(context: CanvasRenderingContext2D, menu: Menu, resources: Resources) {
+    context.fillStyle = "black";
+    context.fillText("menu", 100, 100);
+}
+
+function fade(context: CanvasRenderingContext2D, fade: number) {
+    fade = Math.min(1, Math.max(0, fade));
+    if (fade === 0) return;
+    context.fillStyle = "white";
+    context.globalAlpha = fade;
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+    context.globalAlpha = 1;
+}
 function draw(context: CanvasRenderingContext2D, menu: Menu, resources: Resources) {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    if (menu.game === null){
-        context.fillStyle = "black";
-        context.fillText("menu", 100, 100);
+
+    menu.startCount++;
+    if (menu.gameEndCount !== null) menu.gameEndCount++;
+    if (menu.game === null) {
+        menu.game = null;
+        drawMenu(context, menu, resources);
+        fade(context, (60 - menu.startCount) / 30);
+        if (menu.gameEndCount !== null) fade(context, (60 - menu.gameEndCount) / 30);
     } else {
-        menu.game.elapse++;
-
-        drawGlid(context, menu.game, resources);
-        drawPieces(context, menu.game, resources);
-
-        context.fillStyle = "black";
-        if (30 < menu.game.elapse && menu.game.board.completed)
-            context.fillText("completed", 100, 100);
+        menu.game.startCount++;
+        if (menu.game.startCount < 30) {
+            //ゲーム開始直後はメニューのフェードアウト
+            drawMenu(context, menu, resources);
+            fade(context, menu.game.startCount / 30);
+        }
+        else {
+            drawGame(context, menu.game, resources);
+            fade(context, (60 - menu.game.startCount) / 30);
+            if (menu.gameEndCount !== null) fade(context, menu.gameEndCount / 30);
+            if (menu.gameEndCount === 30) menu.game = null;
+        }
     }
     requestAnimationFrame(() => draw(context, menu, resources));
 }
 
 function click(pos: Pos, menu: Menu) {
-    if (menu.game === null){
+    if (menu.game === null) {
         menu.game = createGame(menu.levels[0]);
+        menu.gameEndCount = null;
     } else {
         if (menu.game.board.completed) {
-            menu.game = null;
+            menu.gameEndCount = 0;
             return;
         }
 
@@ -389,7 +429,7 @@ function click(pos: Pos, menu: Menu) {
         if (board2 !== null) {
             menu.game.prevPlayer = menu.game.board.player;
             menu.game.board = board2;
-            menu.game.elapse = 0;
+            menu.game.moveElapse = 0;
         }
     }
 }
