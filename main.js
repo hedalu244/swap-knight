@@ -99,6 +99,70 @@ function shuffle(board, count = 0, prevBoard = board) {
         return shuffle(prevBoard, count - 1, board);
     }
 }
+function loadResources() {
+    const progress = {
+        registeredCount: 0,
+        finishedCount: 0,
+        errorCount: 0,
+        isFinished: function () {
+            return this.registeredCount === this.finishedCount + this.errorCount;
+        },
+        rate: function () {
+            return (this.finishedCount + this.errorCount) / this.registeredCount;
+        }
+    };
+    return {
+        _progress: progress,
+        player: loadImage("resources/images/player.svg"),
+        pawn: loadImage("resources/images/pawn.svg"),
+        knight: loadImage("resources/images/knight.svg"),
+        rook: loadImage("resources/images/rook.svg"),
+        bishop: loadImage("resources/images/bishop.svg"),
+        reachable: loadImage("resources/images/reachable.svg"),
+        glids: {
+            1: loadImage("resources/images/glid1.svg"),
+            2: loadImage("resources/images/glid2.svg"),
+            3: loadImage("resources/images/glid3.svg"),
+            4: loadImage("resources/images/glid4.svg"),
+            5: loadImage("resources/images/glid5.svg"),
+            6: loadImage("resources/images/glid6.svg"),
+            7: loadImage("resources/images/glid7.svg"),
+            8: loadImage("resources/images/glid8.svg"),
+            9: loadImage("resources/images/glid9.svg"),
+            10: loadImage("resources/images/glid10.svg"),
+            11: loadImage("resources/images/glid11.svg"),
+            12: loadImage("resources/images/glid12.svg"),
+            13: loadImage("resources/images/glid13.svg"),
+            14: loadImage("resources/images/glid14.svg"),
+            15: loadImage("resources/images/glid15.svg"),
+        }
+    };
+    function loadImage(source, onload = () => { }) {
+        const image = new Image();
+        progress.registeredCount++;
+        image.addEventListener('load', () => {
+            progress.finishedCount++;
+            onload();
+        }, false);
+        image.addEventListener("error", () => {
+            progress.errorCount++;
+        });
+        image.src = source;
+        return image;
+    }
+    function loadAudio(source, onload = () => { }) {
+        const audio = new Audio();
+        audio.addEventListener('canplaythrough', () => {
+            progress.finishedCount++;
+            onload();
+        }, false);
+        audio.addEventListener("error", () => {
+            progress.errorCount++;
+        });
+        audio.src = source;
+        return audio;
+    }
+}
 function coordToPos(coord, game) {
     return {
         x: coord.x * game.cellSize + game.originX,
@@ -114,7 +178,7 @@ function posToCoord(pos, game) {
 function createGame(level) {
     const maxBoardWidth = 300;
     const maxBoardHeight = 300;
-    const centerPosX = 150;
+    const centerPosX = 200;
     const centerPosY = 200;
     const board = shuffle(createBoard(level.initial));
     const cellSize = Math.min(maxBoardWidth / level.width, maxBoardHeight / level.height);
@@ -128,22 +192,46 @@ function createGame(level) {
         originY,
     };
 }
-function draw(context, game) {
-    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
-        if (cell !== undefined) {
-            if (isReachableCoord({ x, y }, game.board))
-                context.fillStyle = "red";
-            else if ((x + y) % 2 == 0)
-                context.fillStyle = "lightgray";
-            else
-                context.fillStyle = "darkgray";
+function drawGlid(context, game, resources) {
+    //グリッドを描画
+    for (let x = -1; x < game.level.width; x++) {
+        for (let y = -1; y < game.level.height; y++) {
+            const id = [[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[8, 9], [10, 11]], [[12, 13], [14, 15]]]][getCell(game.board.cells, { x: x + 0, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 0, y: y + 1 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 1 }) === undefined ? 0 : 1];
             const pos = coordToPos({ x, y }, game);
-            context.fillRect(pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
-            context.fillStyle = "black";
-            context.fillText(cell.current, pos.x, pos.y);
+            if (id !== 0) {
+                context.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
+            }
+        }
+    }
+}
+function drawCorrectPieces(context, game, resources) {
+    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
+        if (cell !== undefined && cell.correct !== "blank") {
+            const pos = coordToPos({ x, y }, game);
+            context.drawImage(resources[cell.correct], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
         }
     }));
-    requestAnimationFrame(() => draw(context, game));
+}
+function drawPieces(context, game, resources) {
+    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
+        if (cell !== undefined) {
+            const pos = coordToPos({ x, y }, game);
+            if (isReachableCoord({ x, y }, game.board)) {
+                context.drawImage(resources.reachable, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            }
+            if (x == game.board.player.x && y == game.board.player.y)
+                context.drawImage(resources.player, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            else if (cell.current !== "blank") {
+                context.drawImage(resources[cell.current], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            }
+        }
+    }));
+}
+function draw(context, game, resources) {
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    drawGlid(context, game, resources);
+    drawPieces(context, game, resources);
+    requestAnimationFrame(() => draw(context, game, resources));
 }
 function click(pos, game) {
     const coord = posToCoord(pos, game);
@@ -173,5 +261,6 @@ window.onload = () => {
         height: 3,
     };
     const game = createGame(level);
-    draw(context, game);
+    const resources = loadResources();
+    draw(context, game, resources);
 };
