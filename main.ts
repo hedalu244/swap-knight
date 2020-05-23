@@ -95,7 +95,7 @@ function move(board: Board, to: Coord): Board | null {
 
 //クリックできるところにあるか
 function isReachableCoord(coord: Coord, board: Board): boolean {
-    return !board.completed && getCell(board.cells, coord) !== undefined &&
+    return getCell(board.cells, coord) !== undefined &&
         knightMove.some(dir => coord.x - board.player.x == dir.x && coord.y - board.player.y == dir.y);
 }
 
@@ -299,7 +299,7 @@ function drawPieces(screen: CanvasRenderingContext2D, game: Game, resources: Res
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, game);
 
-            if (isReachableCoord({ x, y }, game.board)) {
+            if (!game.board.completed && isReachableCoord({ x, y }, game.board)) {
                 screen.drawImage(resources.reachable,
                     pos.x - game.cellSize / 2,
                     pos.y - game.cellSize / 2,
@@ -335,28 +335,61 @@ function drawPieces(screen: CanvasRenderingContext2D, game: Game, resources: Res
     }
 }
 
-function draw(context: CanvasRenderingContext2D, game: Game, resources: Resources) {
-    game.elapse++;
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-
-    drawGlid(context, game, resources);
-    drawPieces(context, game, resources);
-
-    context.fillStyle = "black";
-    if (30 < game.elapse && game.board.completed)
-        context.fillText("completed", 0, 0);
-
-    requestAnimationFrame(() => draw(context, game, resources));
+interface Menu {
+    levels: Level[];
+    game: Game | null;
 }
 
-function click(pos: Pos, game: Game) {
-    const coord = posToCoord(pos, game);
-    if (isReachableCoord(coord, game.board)) {
-        const board2 = move(game.board, coord);
+function createMenu(): Menu {
+    return {
+        levels: [{
+            initial: [
+                ["knight", "blank"],
+                ["blank", "blank"],
+                ["blank", "pawn"],
+            ],
+            width: 3,
+            height: 3,
+        }],
+        game: null,
+    };
+}
+
+function draw(context: CanvasRenderingContext2D, menu: Menu, resources: Resources) {
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    if (menu.game === null){
+        context.fillStyle = "black";
+        context.fillText("menu", 100, 100);
+    } else {
+        menu.game.elapse++;
+
+        drawGlid(context, menu.game, resources);
+        drawPieces(context, menu.game, resources);
+
+        context.fillStyle = "black";
+        if (30 < menu.game.elapse && menu.game.board.completed)
+            context.fillText("completed", 100, 100);
+    }
+    requestAnimationFrame(() => draw(context, menu, resources));
+}
+
+function click(pos: Pos, menu: Menu) {
+    if (menu.game === null){
+        menu.game = createGame(menu.levels[0]);
+    } else {
+        if (menu.game.board.completed) {
+            menu.game = null;
+            return;
+        }
+
+        const coord = posToCoord(pos, menu.game);
+        if (!isReachableCoord(coord, menu.game.board)) return;
+
+        const board2 = move(menu.game.board, coord);
         if (board2 !== null) {
-            game.prevPlayer = game.board.player;
-            game.board = board2;
-            game.elapse = 0;
+            menu.game.prevPlayer = menu.game.board.player;
+            menu.game.board = board2;
+            menu.game.elapse = 0;
         }
     }
 }
@@ -381,19 +414,11 @@ window.onload = () => {
     if (context === null)
         throw new Error("context2d not found");
 
-    canvas.addEventListener("click", (event) => {
-        click({ x: event.offsetX, y: event.offsetY }, game);
-    });
-    const level: Level = {
-        initial: [
-            ["knight", "blank", "blank"],
-            ["pawn", "blank", "blank"],
-            ["blank", "blank", "blank"],
-        ],
-        width: 3,
-        height: 3,
-    };
-    const game = createGame(level);
+    const menu = createMenu();
     const resources = loadResources();
-    draw(context, game, resources);
+
+    canvas.addEventListener("click", (event) => {
+        click({ x: event.offsetX, y: event.offsetY }, menu);
+    });
+    draw(context, menu, resources);
 };
