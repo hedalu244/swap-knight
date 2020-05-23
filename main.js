@@ -21,6 +21,7 @@ function createBoard(initial) {
     return {
         cells,
         player: knightSearch.coord,
+        completed: true,
     };
 }
 function setCell(cells, coord, piece) {
@@ -57,20 +58,22 @@ function move(board, to) {
     const toCell = getCell(board.cells, to);
     if (toCell === undefined)
         return null;
+    const cells = setCell(setCell(board.cells, board.player, toCell.current), to, "knight");
     return {
         player: to,
-        cells: setCell(setCell(board.cells, board.player, toCell.current), to, "knight"),
+        cells: cells,
+        completed: isCompleted(cells),
     };
 }
-//一歩で移動できるところにあるか
+//クリックできるところにあるか
 function isReachableCoord(coord, board) {
-    return getCell(board.cells, coord) !== undefined &&
+    return !board.completed && getCell(board.cells, coord) !== undefined &&
         knightMove.some(dir => coord.x - board.player.x == dir.x && coord.y - board.player.y == dir.y);
 }
 //盤面をシャッフル
 function shuffle(board, count = 0, prevBoard = board) {
     if (count <= 0) {
-        if (isCompleted(board.cells))
+        if (board.completed)
             return shuffle(board, board.cells.length * 5 + Math.random() * 5);
         return board;
     }
@@ -188,60 +191,87 @@ function createGame(level) {
         board,
         level,
         cellSize,
+        prevPlayer: board.player,
+        elapse: 0,
         originX,
         originY,
     };
 }
-function drawGlid(context, game, resources) {
+function drawGlid(screen, game, resources) {
     //グリッドを描画
     for (let x = -1; x < game.level.width; x++) {
         for (let y = -1; y < game.level.height; y++) {
             const id = [[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[8, 9], [10, 11]], [[12, 13], [14, 15]]]][getCell(game.board.cells, { x: x + 0, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 0, y: y + 1 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 1 }) === undefined ? 0 : 1];
             const pos = coordToPos({ x, y }, game);
             if (id !== 0) {
-                context.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
+                screen.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
             }
         }
     }
 }
-function drawCorrectPieces(context, game, resources) {
+function drawCorrectPieces(screen, game, resources) {
     game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined && cell.correct !== "blank") {
             const pos = coordToPos({ x, y }, game);
-            context.drawImage(resources[cell.correct], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            screen.drawImage(resources[cell.correct], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
         }
     }));
 }
-function drawPieces(context, game, resources) {
+function drawPieces(screen, game, resources) {
     game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, game);
             if (isReachableCoord({ x, y }, game.board)) {
-                context.drawImage(resources.reachable, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+                screen.drawImage(resources.reachable, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
             }
-            if (x == game.board.player.x && y == game.board.player.y)
-                context.drawImage(resources.player, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            if (x == game.board.player.x && y == game.board.player.y) {
+                const prevPos = coordToPos(game.prevPlayer, game);
+                const animatedPos = animation(prevPos, pos, game.elapse);
+                screen.drawImage(resources.player, animatedPos.x - game.cellSize / 2, animatedPos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            }
             else if (cell.current !== "blank") {
-                context.drawImage(resources[cell.current], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+                screen.drawImage(resources[cell.current], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
             }
         }
     }));
+    function animation(pos1, pos2, elapse) {
+        const rate = Math.min(1, elapse / 15);
+        const mix = rate * rate * (3 - 2 * rate);
+        return {
+            x: pos1.x + (pos2.x - pos1.x) * mix,
+            y: pos1.y + (pos2.y - pos1.y) * mix,
+        };
+    }
 }
 function draw(context, game, resources) {
+    game.elapse++;
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     drawGlid(context, game, resources);
     drawPieces(context, game, resources);
+    context.fillStyle = "black";
+    if (30 < game.elapse && game.board.completed)
+        context.fillText("completed", 0, 0);
     requestAnimationFrame(() => draw(context, game, resources));
 }
 function click(pos, game) {
     const coord = posToCoord(pos, game);
     if (isReachableCoord(coord, game.board)) {
         const board2 = move(game.board, coord);
-        if (board2 !== null)
+        if (board2 !== null) {
+            game.prevPlayer = game.board.player;
             game.board = board2;
-        if (isCompleted(game.board.cells))
-            alert("complete");
+            game.elapse = 0;
+        }
     }
+}
+function createScreen(width, height) {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const screen = canvas.getContext("2d");
+    if (screen === null)
+        throw new Error("context2d not found");
+    return screen;
 }
 window.onload = () => {
     const canvas = document.getElementById("canvas");

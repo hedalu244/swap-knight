@@ -17,6 +17,7 @@ interface Direction {
 interface Board {
     readonly cells: Cell[][];
     readonly player: Coord;
+    readonly completed: boolean;
 }
 
 //ナイトが動ける方向(時計回り)
@@ -42,6 +43,7 @@ function createBoard(initial: readonly (Piece | undefined)[][]): Board {
     return {
         cells,
         player: knightSearch.coord,
+        completed: true,
     };
 }
 
@@ -83,22 +85,24 @@ function move(board: Board, to: Coord): Board | null {
     const toCell = getCell(board.cells, to);
     if (toCell === undefined) return null;
 
+    const cells = setCell(setCell(board.cells, board.player, toCell.current), to, "knight");
     return {
         player: to,
-        cells: setCell(setCell(board.cells, board.player, toCell.current), to, "knight"),
+        cells: cells,
+        completed: isCompleted(cells),
     };
 }
 
-//一歩で移動できるところにあるか
+//クリックできるところにあるか
 function isReachableCoord(coord: Coord, board: Board): boolean {
-    return getCell(board.cells, coord) !== undefined &&
+    return !board.completed && getCell(board.cells, coord) !== undefined &&
         knightMove.some(dir => coord.x - board.player.x == dir.x && coord.y - board.player.y == dir.y);
 }
 
 //盤面をシャッフル
 function shuffle(board: Board, count: number = 0, prevBoard: Board = board): Board {
     if (count <= 0) {
-        if (isCompleted(board.cells))
+        if (board.completed)
             return shuffle(board, board.cells.length * 5 + Math.random() * 5);
         return board;
     }
@@ -240,6 +244,8 @@ function createGame(level: Level): Game {
         board,
         level,
         cellSize,
+        prevPlayer: board.player,
+        elapse: 0,
         originX,
         originY,
     };
@@ -248,12 +254,14 @@ function createGame(level: Level): Game {
 interface Game {
     board: Board,
     level: Level,
+    prevPlayer: Coord,
+    elapse: number,
     cellSize: number,
     originX: number,
     originY: number,
 }
 
-function drawGlid(context: CanvasRenderingContext2D, game: Game, resources: Resources) {
+function drawGlid(screen: Screen2D, game: Game, resources: Resources) {
     //グリッドを描画
     for (let x = -1; x < game.level.width; x++) {
         for (let y = -1; y < game.level.height; y++) {
@@ -266,18 +274,18 @@ function drawGlid(context: CanvasRenderingContext2D, game: Game, resources: Reso
             const pos = coordToPos({ x, y }, game);
 
             if (id !== 0) {
-                context.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
+                screen.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
             }
         }
     }
 }
 
 
-function drawCorrectPieces(context: CanvasRenderingContext2D, game: Game, resources: Resources) {
+function drawCorrectPieces(screen: Screen2D, game: Game, resources: Resources) {
     game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined && cell.correct !== "blank") {
             const pos = coordToPos({ x, y }, game);
-            context.drawImage(resources[cell.correct],
+            screen.drawImage(resources[cell.correct],
                 pos.x - game.cellSize / 2,
                 pos.y - game.cellSize / 2,
                 game.cellSize,
@@ -286,27 +294,30 @@ function drawCorrectPieces(context: CanvasRenderingContext2D, game: Game, resour
     }));
 }
 
-function drawPieces(context: CanvasRenderingContext2D, game: Game, resources: Resources) {
+function drawPieces(screen: CanvasRenderingContext2D, game: Game, resources: Resources) {
     game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, game);
 
             if (isReachableCoord({ x, y }, game.board)) {
-                context.drawImage(resources.reachable,
+                screen.drawImage(resources.reachable,
                     pos.x - game.cellSize / 2,
                     pos.y - game.cellSize / 2,
                     game.cellSize,
                     game.cellSize);
             }
 
-            if (x == game.board.player.x && y == game.board.player.y)
-                context.drawImage(resources.player,
-                    pos.x - game.cellSize / 2,
-                    pos.y - game.cellSize / 2,
+            if (x == game.board.player.x && y == game.board.player.y) {
+                const prevPos = coordToPos(game.prevPlayer, game);
+                const animatedPos = animation(prevPos, pos, game.elapse);
+                screen.drawImage(resources.player,
+                    animatedPos.x - game.cellSize / 2,
+                    animatedPos.y - game.cellSize / 2,
                     game.cellSize,
                     game.cellSize);
+            }
             else if (cell.current !== "blank") {
-                context.drawImage(resources[cell.current],
+                screen.drawImage(resources[cell.current],
                     pos.x - game.cellSize / 2,
                     pos.y - game.cellSize / 2,
                     game.cellSize,
@@ -314,13 +325,26 @@ function drawPieces(context: CanvasRenderingContext2D, game: Game, resources: Re
             }
         }
     }));
+    function animation(pos1: Pos, pos2: Pos, elapse: number) {
+        const rate = Math.min(1, elapse / 15);
+        const mix = rate * rate * (3 - 2 * rate);
+        return {
+            x: pos1.x + (pos2.x - pos1.x) * mix,
+            y: pos1.y + (pos2.y - pos1.y) * mix,
+        };
+    }
 }
 
 function draw(context: CanvasRenderingContext2D, game: Game, resources: Resources) {
+    game.elapse++;
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 
     drawGlid(context, game, resources);
     drawPieces(context, game, resources);
+
+    context.fillStyle = "black";
+    if (30 < game.elapse && game.board.completed)
+        context.fillText("completed", 0, 0);
 
     requestAnimationFrame(() => draw(context, game, resources));
 }
@@ -329,17 +353,30 @@ function click(pos: Pos, game: Game) {
     const coord = posToCoord(pos, game);
     if (isReachableCoord(coord, game.board)) {
         const board2 = move(game.board, coord);
-        if (board2 !== null) game.board = board2;
-        if (isCompleted(game.board.cells))
-            alert("complete");
+        if (board2 !== null) {
+            game.prevPlayer = game.board.player;
+            game.board = board2;
+            game.elapse = 0;
+        }
     }
+}
+
+type Screen2D = CanvasRenderingContext2D;
+
+function createScreen(width: number, height: number): Screen2D {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const screen = canvas.getContext("2d");
+    if (screen === null)
+        throw new Error("context2d not found");
+    return screen;
 }
 
 window.onload = () => {
     const canvas = document.getElementById("canvas");
     if (canvas === null || !(canvas instanceof HTMLCanvasElement))
         throw new Error("canvas not found");
-
     const context = canvas.getContext("2d");
     if (context === null)
         throw new Error("context2d not found");
