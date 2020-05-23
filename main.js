@@ -286,12 +286,13 @@ function draw(context, menu, resources) {
     const fadeoutLength = 30;
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     menu.startCount++;
-    if (menu.game !== null)
+    if (menu.game !== null) {
         menu.game.startCount++;
-    if (menu.game !== null && menu.game.endCount !== null)
-        menu.game.endCount++;
-    if (menu.game !== null && menu.game.endCount === fadeoutLength + fadeinLength)
-        menu.game = null;
+        if (menu.game.endCount !== null)
+            menu.game.endCount++;
+        if (menu.game.endCount === fadeoutLength + fadeinLength)
+            menu.game = null;
+    }
     if (menu.game === null || menu.game.startCount < fadeinLength || menu.game.endCount && fadeoutLength < menu.game.endCount) {
         drawMenu(context, menu, resources);
         //(タイトル→)メニューのフェードイン
