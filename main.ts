@@ -249,6 +249,7 @@ function createGame(level: Level): Game {
         originX,
         originY,
         startCount: 0,
+        endCount: null,
     };
 }
 
@@ -261,6 +262,7 @@ interface Game {
     originX: number,
     originY: number,
     startCount: number,
+    endCount: number | null,
 }
 
 function drawGlid(screen: Screen2D, game: Game, resources: Resources) {
@@ -352,7 +354,6 @@ interface Menu {
     levels: Level[];
     game: Game | null;
     startCount: number,
-    gameEndCount: number | null;
 }
 
 function createMenu(): Menu {
@@ -368,7 +369,6 @@ function createMenu(): Menu {
         }],
         game: null,
         startCount: 0,
-        gameEndCount: null,
     };
 }
 
@@ -386,28 +386,31 @@ function fade(context: CanvasRenderingContext2D, fade: number) {
     context.globalAlpha = 1;
 }
 function draw(context: CanvasRenderingContext2D, menu: Menu, resources: Resources) {
+    const fadeinLength = 30;
+    const fadeoutLength = 30;
+
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 
     menu.startCount++;
-    if (menu.gameEndCount !== null) menu.gameEndCount++;
-    if (menu.game === null) {
-        menu.game = null;
+    if (menu.game !== null) menu.game.startCount++;
+    if (menu.game !== null && menu.game.endCount !== null) menu.game.endCount++;
+    
+    if (menu.game !== null && menu.game.endCount === fadeoutLength + fadeinLength) menu.game = null;
+    
+    if (menu.game === null || menu.game.startCount < fadeinLength || menu.game.endCount && fadeoutLength < menu.game.endCount) {
         drawMenu(context, menu, resources);
-        fade(context, (60 - menu.startCount) / 30);
-        if (menu.gameEndCount !== null) fade(context, (60 - menu.gameEndCount) / 30);
+        //(タイトル→)メニューのフェードイン
+        fade(context, (fadeoutLength + fadeinLength - menu.startCount) / fadeinLength);
+        //メニュー(→ゲーム)のフェードアウト
+        if (menu.game && menu.game.endCount === null) fade(context, menu.game.startCount / fadeoutLength);
+        //(ゲーム→)メニューのフェードイン
+        if (menu.game && menu.game.endCount !== null) fade(context, (fadeoutLength + fadeinLength - menu.game.endCount) / fadeinLength);
     } else {
-        menu.game.startCount++;
-        if (menu.game.startCount < 30) {
-            //ゲーム開始直後はメニューのフェードアウト
-            drawMenu(context, menu, resources);
-            fade(context, menu.game.startCount / 30);
-        }
-        else {
-            drawGame(context, menu.game, resources);
-            fade(context, (60 - menu.game.startCount) / 30);
-            if (menu.gameEndCount !== null) fade(context, menu.gameEndCount / 30);
-            if (menu.gameEndCount === 30) menu.game = null;
-        }
+        drawGame(context, menu.game, resources);
+        //(メニュー→)ゲームのフェードイン
+        fade(context, (fadeoutLength + fadeinLength - menu.game.startCount) / fadeinLength);
+        //ゲーム(→メニュー)のフェードアウト
+        if (menu.game.endCount !== null) fade(context, menu.game.endCount / fadeoutLength);
     }
     requestAnimationFrame(() => draw(context, menu, resources));
 }
@@ -415,10 +418,9 @@ function draw(context: CanvasRenderingContext2D, menu: Menu, resources: Resource
 function click(pos: Pos, menu: Menu) {
     if (menu.game === null) {
         menu.game = createGame(menu.levels[0]);
-        menu.gameEndCount = null;
     } else {
         if (menu.game.board.completed) {
-            menu.gameEndCount = 0;
+            menu.game.endCount = 0;
             return;
         }
 
