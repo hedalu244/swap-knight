@@ -239,6 +239,8 @@ function click(pos, game) {
         const board2 = move(game.board, coord);
         if (board2 !== null)
             game.board = board2;
+        if (isCompleted(game.board.cells))
+            alert("complete");
     }
 }
 window.onload = () => {
@@ -255,7 +257,7 @@ window.onload = () => {
         initial: [
             ["knight", "blank", "blank"],
             ["pawn", "blank", "blank"],
-            ["pawn", "blank", "blank"],
+            ["blank", "blank", "blank"],
         ],
         width: 3,
         height: 3,
