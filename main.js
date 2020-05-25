@@ -198,60 +198,6 @@ function createGame(level) {
         originY,
     };
 }
-function drawGlid(screen, game, resources) {
-    //グリッドを描画
-    for (let x = -1; x < game.level.width; x++) {
-        for (let y = -1; y < game.level.height; y++) {
-            const id = [[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[8, 9], [10, 11]], [[12, 13], [14, 15]]]][getCell(game.board.cells, { x: x + 0, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 0, y: y + 1 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 1 }) === undefined ? 0 : 1];
-            const pos = coordToPos({ x, y }, game);
-            if (id !== 0) {
-                screen.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
-            }
-        }
-    }
-}
-function drawCorrectPieces(screen, game, resources) {
-    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
-        if (cell !== undefined && cell.correct !== "blank") {
-            const pos = coordToPos({ x, y }, game);
-            screen.drawImage(resources[cell.correct], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
-        }
-    }));
-}
-function drawPieces(screen, game, resources) {
-    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
-        if (cell !== undefined) {
-            const pos = coordToPos({ x, y }, game);
-            if (!game.board.completed && isReachableCoord({ x, y }, game.board)) {
-                screen.drawImage(resources.reachable, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
-            }
-            if (x == game.board.player.x && y == game.board.player.y) {
-                const prevPos = coordToPos(game.prevPlayer, game);
-                const animatedPos = animation(prevPos, pos, game.moveElapse);
-                screen.drawImage(resources.player, animatedPos.x - game.cellSize / 2, animatedPos.y - game.cellSize / 2, game.cellSize, game.cellSize);
-            }
-            else if (cell.current !== "blank") {
-                screen.drawImage(resources[cell.current], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
-            }
-        }
-    }));
-    function animation(pos1, pos2, elapse) {
-        const rate = Math.min(1, elapse / 15);
-        const mix = rate * rate * (3 - 2 * rate);
-        return {
-            x: pos1.x + (pos2.x - pos1.x) * mix,
-            y: pos1.y + (pos2.y - pos1.y) * mix,
-        };
-    }
-}
-function drawGame(screen, game, resources) {
-    game.moveElapse++;
-    drawGlid(screen, game, resources);
-    drawPieces(screen, game, resources);
-    screen.fillStyle = "black";
-    if (30 < game.moveElapse && game.board.completed)
-        screen.fillText("completed", 100, 100);
-}
 function createMenu() {
     return {
         type: "menu",
@@ -266,46 +212,12 @@ function createMenu() {
             }],
     };
 }
-function drawMenu(screen, menu, resources) {
-    screen.fillStyle = "black";
-    screen.fillText("menu", 100, 100);
-}
-function drawState(screen, state, resources) {
-    switch (state.type) {
-        case "menu":
-            drawMenu(screen, state, resources);
-            break;
-        case "game":
-            drawGame(screen, state, resources);
-            break;
-    }
-}
-function fade(screen, fade) {
-    fade = Math.min(1, Math.max(0, fade));
-    if (fade === 0)
-        return;
-    screen.fillStyle = "white";
-    screen.globalAlpha = fade;
-    screen.fillRect(0, 0, screen.canvas.width, screen.canvas.height);
-    screen.globalAlpha = 1;
-}
-function draw(screen, manager, resources) {
-    const fadeinLength = 30;
-    const fadeoutLength = 30;
-    screen.clearRect(0, 0, screen.canvas.width, screen.canvas.height);
-    if (manager.nextState !== null) {
-        if (manager.fadeCount < 30) {
-            drawState(screen, manager.state, resources);
-            fade(screen, manager.fadeCount / fadeoutLength);
-        }
-        if (30 <= manager.fadeCount) {
-            drawState(screen, manager.nextState, resources);
-            fade(screen, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
-        }
-    }
-    else {
-        drawState(screen, manager.state, resources);
-    }
+function createManager(state) {
+    return {
+        state: state,
+        nextState: null,
+        fadeCount: 0,
+    };
 }
 function makeTransition(manager, nextState) {
     return {
@@ -361,6 +273,101 @@ function click(pos, manager) {
             break;
     }
 }
+function drawMenu(screen, menu, resources) {
+    screen.fillStyle = "black";
+    screen.fillText("menu", 100, 100);
+}
+function drawGlid(screen, game, resources) {
+    //グリッドを描画
+    for (let x = -1; x < game.level.width; x++) {
+        for (let y = -1; y < game.level.height; y++) {
+            const id = [[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[8, 9], [10, 11]], [[12, 13], [14, 15]]]][getCell(game.board.cells, { x: x + 0, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 0 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 0, y: y + 1 }) === undefined ? 0 : 1][getCell(game.board.cells, { x: x + 1, y: y + 1 }) === undefined ? 0 : 1];
+            const pos = coordToPos({ x, y }, game);
+            if (id !== 0) {
+                screen.drawImage(resources.glids[id], pos.x, pos.y, game.cellSize, game.cellSize);
+            }
+        }
+    }
+}
+function drawCorrectPieces(screen, game, resources) {
+    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
+        if (cell !== undefined && cell.correct !== "blank") {
+            const pos = coordToPos({ x, y }, game);
+            screen.drawImage(resources[cell.correct], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+        }
+    }));
+}
+function drawPieces(screen, game, resources) {
+    game.board.cells.forEach((row, x) => row.forEach((cell, y) => {
+        if (cell !== undefined) {
+            const pos = coordToPos({ x, y }, game);
+            if (!game.board.completed && isReachableCoord({ x, y }, game.board)) {
+                screen.drawImage(resources.reachable, pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            }
+            if (x == game.board.player.x && y == game.board.player.y) {
+                const prevPos = coordToPos(game.prevPlayer, game);
+                const animatedPos = animation(prevPos, pos, game.moveElapse);
+                screen.drawImage(resources.player, animatedPos.x - game.cellSize / 2, animatedPos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            }
+            else if (cell.current !== "blank") {
+                screen.drawImage(resources[cell.current], pos.x - game.cellSize / 2, pos.y - game.cellSize / 2, game.cellSize, game.cellSize);
+            }
+        }
+    }));
+    function animation(pos1, pos2, elapse) {
+        const rate = Math.min(1, elapse / 15);
+        const mix = rate * rate * (3 - 2 * rate);
+        return {
+            x: pos1.x + (pos2.x - pos1.x) * mix,
+            y: pos1.y + (pos2.y - pos1.y) * mix,
+        };
+    }
+}
+function drawGame(screen, game, resources) {
+    game.moveElapse++;
+    drawGlid(screen, game, resources);
+    drawPieces(screen, game, resources);
+    screen.fillStyle = "black";
+    if (30 < game.moveElapse && game.board.completed)
+        screen.fillText("completed", 100, 100);
+}
+function drawState(screen, state, resources) {
+    switch (state.type) {
+        case "menu":
+            drawMenu(screen, state, resources);
+            break;
+        case "game":
+            drawGame(screen, state, resources);
+            break;
+    }
+}
+function fade(screen, fade) {
+    fade = Math.min(1, Math.max(0, fade));
+    if (fade === 0)
+        return;
+    screen.fillStyle = "white";
+    screen.globalAlpha = fade;
+    screen.fillRect(0, 0, screen.canvas.width, screen.canvas.height);
+    screen.globalAlpha = 1;
+}
+function draw(screen, manager, resources) {
+    const fadeinLength = 30;
+    const fadeoutLength = 30;
+    screen.clearRect(0, 0, screen.canvas.width, screen.canvas.height);
+    if (manager.nextState !== null) {
+        if (manager.fadeCount < 30) {
+            drawState(screen, manager.state, resources);
+            fade(screen, manager.fadeCount / fadeoutLength);
+        }
+        if (30 <= manager.fadeCount) {
+            drawState(screen, manager.nextState, resources);
+            fade(screen, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
+        }
+    }
+    else {
+        drawState(screen, manager.state, resources);
+    }
+}
 function createScreen(width, height) {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -379,11 +386,7 @@ window.onload = () => {
         throw new Error("screen2d not found");
     const menu = createMenu();
     const resources = loadResources();
-    let manager = {
-        state: menu,
-        nextState: null,
-        fadeCount: 0,
-    };
+    let manager = createManager(menu);
     canvas.addEventListener("click", (event) => {
         manager = click({ x: event.offsetX, y: event.offsetY }, manager);
     });

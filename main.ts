@@ -263,6 +263,103 @@ interface Game {
     originY: number,
 }
 
+interface Menu {
+    type: "menu";
+    levels: Level[];
+}
+
+function createMenu(): Menu {
+    return {
+        type: "menu",
+        levels: [{
+            initial: [
+                ["knight", "blank"],
+                ["blank", "blank"],
+                ["blank", "pawn"],
+            ],
+            width: 3,
+            height: 3,
+        }],
+    };
+}
+
+type State = Game | Menu;
+
+interface Manager {
+    readonly state: State;
+    readonly nextState: State | null;
+    readonly fadeCount: number;
+}
+
+function createManager(state: State): Manager { 
+    return {
+        state: state,
+        nextState: null,
+        fadeCount: 0,
+    };
+}
+
+function makeTransition(manager: Manager, nextState: State): Manager {
+    return {
+        state: manager.state,
+        nextState: nextState,
+        fadeCount: 0,
+    };
+}
+
+function updateManager(manager: Manager): Manager {
+    if (manager.nextState !== null) {
+        if (60 <= manager.fadeCount) {
+            return {
+                state: manager.nextState,
+                nextState: null,
+                fadeCount: 0,
+            };
+        }
+        return {
+            state: manager.state,
+            nextState: manager.nextState,
+            fadeCount: manager.fadeCount + 1,
+        };
+    }
+    return manager;
+}
+
+function clickMenu(pos: Pos, menu: Menu, manager: Manager): Manager {
+    return makeTransition(manager, createGame(menu.levels[0]));
+}
+
+function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
+    if (game.board.completed) {
+        return makeTransition(manager, createMenu());
+    }
+
+    const coord = posToCoord(pos, game);
+    if (!isReachableCoord(coord, game.board)) return manager;
+
+    const board2 = move(game.board, coord);
+    if (board2 !== null) {
+        game.prevPlayer = game.board.player;
+        game.board = board2;
+        game.moveElapse = 0;
+    }
+    return manager;
+}
+
+function click(pos: Pos, manager: Manager): Manager {
+    if (manager.nextState !== null) return manager;
+    switch (manager.state.type) {
+        case "menu": return clickMenu(pos, manager.state, manager); break;
+        case "game": return clickGame(pos, manager.state, manager); break;
+    }
+}
+
+function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
+    screen.fillStyle = "black";
+    screen.fillText("menu", 100, 100);
+}
+
+
 function drawGlid(screen: Screen2D, game: Game, resources: Resources) {
     //グリッドを描画
     for (let x = -1; x < game.level.width; x++) {
@@ -348,39 +445,6 @@ function drawGame(screen: Screen2D, game: Game, resources: Resources) {
         screen.fillText("completed", 100, 100);
 }
 
-interface Menu {
-    type: "menu";
-    levels: Level[];
-}
-
-function createMenu(): Menu {
-    return {
-        type: "menu",
-        levels: [{
-            initial: [
-                ["knight", "blank"],
-                ["blank", "blank"],
-                ["blank", "pawn"],
-            ],
-            width: 3,
-            height: 3,
-        }],
-    };
-}
-
-interface Manager {
-    readonly state: State;
-    readonly nextState: State | null;
-    readonly fadeCount: number;
-}
-
-type State = Game | Menu;
-
-function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
-    screen.fillStyle = "black";
-    screen.fillText("menu", 100, 100);
-}
-
 function drawState(screen: Screen2D, state: State, resources: Resources) {
     switch (state.type) {
         case "menu": drawMenu(screen, state, resources); break;
@@ -417,60 +481,6 @@ function draw(screen: Screen2D, manager: Manager, resources: Resources) {
     }
 }
 
-function makeTransition(manager: Manager, nextState: State): Manager {
-    return {
-        state: manager.state,
-        nextState: nextState,
-        fadeCount: 0,
-    };
-}
-function updateManager(manager: Manager): Manager {
-    if (manager.nextState !== null) {
-        if (60 <= manager.fadeCount) {
-            return {
-                state: manager.nextState,
-                nextState: null,
-                fadeCount: 0,
-            };
-        }
-        return {
-            state: manager.state,
-            nextState: manager.nextState,
-            fadeCount: manager.fadeCount + 1,
-        };
-    }
-    return manager;
-}
-
-function clickMenu(pos: Pos, menu: Menu, manager: Manager): Manager {
-    return makeTransition(manager, createGame(menu.levels[0]));
-}
-
-function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
-    if (game.board.completed) {
-        return makeTransition(manager, createMenu());
-    }
-
-    const coord = posToCoord(pos, game);
-    if (!isReachableCoord(coord, game.board)) return manager;
-
-    const board2 = move(game.board, coord);
-    if (board2 !== null) {
-        game.prevPlayer = game.board.player;
-        game.board = board2;
-        game.moveElapse = 0;
-    }
-    return manager;
-}
-
-function click(pos: Pos, manager: Manager): Manager {
-    if (manager.nextState !== null) return manager;
-    switch (manager.state.type) {
-        case "menu": return clickMenu(pos, manager.state, manager); break;
-        case "game": return clickGame(pos, manager.state, manager); break;
-    }
-}
-
 type Screen2D = CanvasRenderingContext2D;
 
 function createScreen(width: number, height: number): Screen2D {
@@ -493,11 +503,7 @@ window.onload = () => {
 
     const menu = createMenu();
     const resources = loadResources();
-    let manager: Manager = {
-        state: menu,
-        nextState: null,
-        fadeCount: 0,
-    };
+    let manager: Manager = createManager(menu);
 
     canvas.addEventListener("click", (event) => {
         manager = click({ x: event.offsetX, y: event.offsetY }, manager);
