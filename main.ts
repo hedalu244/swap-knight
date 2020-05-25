@@ -241,6 +241,7 @@ function createGame(level: Level): Game {
     const originY = centerPosY - cellSize * (level.height - 1) / 2;
 
     return {
+        type: "game",
         board,
         level,
         cellSize,
@@ -248,12 +249,11 @@ function createGame(level: Level): Game {
         moveElapse: 0,
         originX,
         originY,
-        startCount: 0,
-        endCount: null,
     };
 }
 
 interface Game {
+    type: "game",
     board: Board,
     level: Level,
     prevPlayer: Coord,
@@ -261,8 +261,6 @@ interface Game {
     cellSize: number,
     originX: number,
     originY: number,
-    startCount: number,
-    endCount: number | null,
 }
 
 function drawGlid(screen: Screen2D, game: Game, resources: Resources) {
@@ -351,13 +349,13 @@ function drawGame(context: CanvasRenderingContext2D, game: Game, resources: Reso
 }
 
 interface Menu {
+    type: "menu";
     levels: Level[];
-    game: Game | null;
-    startCount: number,
 }
 
 function createMenu(): Menu {
     return {
+        type: "menu",
         levels: [{
             initial: [
                 ["knight", "blank"],
@@ -367,14 +365,27 @@ function createMenu(): Menu {
             width: 3,
             height: 3,
         }],
-        game: null,
-        startCount: 0,
     };
 }
+
+interface Manager {
+    state: State;
+    nextState: State | null;
+    fadeCount: number;
+}
+
+type State = Game | Menu;
 
 function drawMenu(context: CanvasRenderingContext2D, menu: Menu, resources: Resources) {
     context.fillStyle = "black";
     context.fillText("menu", 100, 100);
+}
+
+function drawState(context: Screen2D, state: State, resources: Resources) {
+    switch (state.type) {
+        case "menu": drawMenu(context, state, resources); break;
+        case "game": drawGame(context, state, resources); break;
+    }
 }
 
 function fade(context: CanvasRenderingContext2D, fade: number) {
@@ -385,55 +396,61 @@ function fade(context: CanvasRenderingContext2D, fade: number) {
     context.fillRect(0, 0, context.canvas.width, context.canvas.height);
     context.globalAlpha = 1;
 }
-function draw(context: CanvasRenderingContext2D, menu: Menu, resources: Resources) {
+function draw(context: CanvasRenderingContext2D, manager: Manager, resources: Resources) {
     const fadeinLength = 30;
     const fadeoutLength = 30;
 
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 
-    menu.startCount++;
-    if (menu.game !== null) {
-        menu.game.startCount++;
-        if (menu.game.endCount !== null) menu.game.endCount++;
-        if (menu.game.endCount === fadeoutLength + fadeinLength) menu.game = null;
+    if (manager.nextState !== null) {
+        manager.fadeCount++;
+        if (manager.fadeCount < 30) {
+            drawState(context, manager.state, resources);
+            fade(context, manager.fadeCount / fadeoutLength);
+        }
+        if (30 <= manager.fadeCount) {
+            drawState(context, manager.nextState, resources);
+            fade(context, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
+        }
+        if (60 <= manager.fadeCount) {
+            manager.state = manager.nextState;
+            manager.nextState = null;
+        }
     }
-
-    if (menu.game === null || menu.game.startCount < fadeinLength || menu.game.endCount && fadeoutLength < menu.game.endCount) {
-        drawMenu(context, menu, resources);
-        //(タイトル→)メニューのフェードイン
-        fade(context, (fadeoutLength + fadeinLength - menu.startCount) / fadeinLength);
-        //メニュー(→ゲーム)のフェードアウト
-        if (menu.game && menu.game.endCount === null) fade(context, menu.game.startCount / fadeoutLength);
-        //(ゲーム→)メニューのフェードイン
-        if (menu.game && menu.game.endCount !== null) fade(context, (fadeoutLength + fadeinLength - menu.game.endCount) / fadeinLength);
-    } else {
-        drawGame(context, menu.game, resources);
-        //(メニュー→)ゲームのフェードイン
-        fade(context, (fadeoutLength + fadeinLength - menu.game.startCount) / fadeinLength);
-        //ゲーム(→メニュー)のフェードアウト
-        if (menu.game.endCount !== null) fade(context, menu.game.endCount / fadeoutLength);
+    else {
+        drawState(context, manager.state, resources);
     }
-    requestAnimationFrame(() => draw(context, menu, resources));
+    requestAnimationFrame(() => draw(context, manager, resources));
 }
 
-function click(pos: Pos, menu: Menu) {
-    if (menu.game === null) {
-        menu.game = createGame(menu.levels[0]);
-    } else {
-        if (menu.game.board.completed) {
-            menu.game.endCount = 0;
-            return;
-        }
+function clickMenu(pos: Pos, menu: Menu, manager: Manager) {
+    manager.nextState = createGame(menu.levels[0]);
+    manager.fadeCount = 0;
+}
 
-        const coord = posToCoord(pos, menu.game);
-        if (!isReachableCoord(coord, menu.game.board)) return;
+function clickGame(pos: Pos, game: Game, manager: Manager) {
+    if (game.board.completed) {
+        manager.nextState = createMenu();
+        manager.fadeCount = 0;
+        return;
+    }
 
-        const board2 = move(menu.game.board, coord);
-        if (board2 !== null) {
-            menu.game.prevPlayer = menu.game.board.player;
-            menu.game.board = board2;
-            menu.game.moveElapse = 0;
-        }
+    const coord = posToCoord(pos, game);
+    if (!isReachableCoord(coord, game.board)) return;
+
+    const board2 = move(game.board, coord);
+    if (board2 !== null) {
+        game.prevPlayer = game.board.player;
+        game.board = board2;
+        game.moveElapse = 0;
+    }
+}
+
+function click(pos: Pos, manager: Manager) {
+    if (manager.nextState !== null) return;
+    switch (manager.state.type) {
+        case "menu": clickMenu(pos, manager.state, manager); break;
+        case "game": clickGame(pos, manager.state, manager); break;
     }
 }
 
@@ -459,9 +476,14 @@ window.onload = () => {
 
     const menu = createMenu();
     const resources = loadResources();
+    const manager: Manager = {
+        state: menu,
+        nextState: null,
+        fadeCount: 0,
+    }
 
     canvas.addEventListener("click", (event) => {
-        click({ x: event.offsetX, y: event.offsetY }, menu);
+        click({ x: event.offsetX, y: event.offsetY }, manager);
     });
-    draw(context, menu, resources);
+    draw(context, manager, resources);
 };
