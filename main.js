@@ -244,13 +244,13 @@ function drawPieces(screen, game, resources) {
         };
     }
 }
-function drawGame(context, game, resources) {
+function drawGame(screen, game, resources) {
     game.moveElapse++;
-    drawGlid(context, game, resources);
-    drawPieces(context, game, resources);
-    context.fillStyle = "black";
+    drawGlid(screen, game, resources);
+    drawPieces(screen, game, resources);
+    screen.fillStyle = "black";
     if (30 < game.moveElapse && game.board.completed)
-        context.fillText("completed", 100, 100);
+        screen.fillText("completed", 100, 100);
 }
 function createMenu() {
     return {
@@ -266,82 +266,98 @@ function createMenu() {
             }],
     };
 }
-function drawMenu(context, menu, resources) {
-    context.fillStyle = "black";
-    context.fillText("menu", 100, 100);
+function drawMenu(screen, menu, resources) {
+    screen.fillStyle = "black";
+    screen.fillText("menu", 100, 100);
 }
-function drawState(context, state, resources) {
+function drawState(screen, state, resources) {
     switch (state.type) {
         case "menu":
-            drawMenu(context, state, resources);
+            drawMenu(screen, state, resources);
             break;
         case "game":
-            drawGame(context, state, resources);
+            drawGame(screen, state, resources);
             break;
     }
 }
-function fade(context, fade) {
+function fade(screen, fade) {
     fade = Math.min(1, Math.max(0, fade));
     if (fade === 0)
         return;
-    context.fillStyle = "white";
-    context.globalAlpha = fade;
-    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
-    context.globalAlpha = 1;
+    screen.fillStyle = "white";
+    screen.globalAlpha = fade;
+    screen.fillRect(0, 0, screen.canvas.width, screen.canvas.height);
+    screen.globalAlpha = 1;
 }
-function draw(context, manager, resources) {
+function draw(screen, manager, resources) {
     const fadeinLength = 30;
     const fadeoutLength = 30;
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    screen.clearRect(0, 0, screen.canvas.width, screen.canvas.height);
     if (manager.nextState !== null) {
-        manager.fadeCount++;
         if (manager.fadeCount < 30) {
-            drawState(context, manager.state, resources);
-            fade(context, manager.fadeCount / fadeoutLength);
+            drawState(screen, manager.state, resources);
+            fade(screen, manager.fadeCount / fadeoutLength);
         }
         if (30 <= manager.fadeCount) {
-            drawState(context, manager.nextState, resources);
-            fade(context, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
-        }
-        if (60 <= manager.fadeCount) {
-            manager.state = manager.nextState;
-            manager.nextState = null;
+            drawState(screen, manager.nextState, resources);
+            fade(screen, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
         }
     }
     else {
-        drawState(context, manager.state, resources);
+        drawState(screen, manager.state, resources);
     }
-    requestAnimationFrame(() => draw(context, manager, resources));
+}
+function makeTransition(manager, nextState) {
+    return {
+        state: manager.state,
+        nextState: nextState,
+        fadeCount: 0,
+    };
+}
+function updateManager(manager) {
+    if (manager.nextState !== null) {
+        if (60 <= manager.fadeCount) {
+            return {
+                state: manager.nextState,
+                nextState: null,
+                fadeCount: 0,
+            };
+        }
+        return {
+            state: manager.state,
+            nextState: manager.nextState,
+            fadeCount: manager.fadeCount + 1,
+        };
+    }
+    return manager;
 }
 function clickMenu(pos, menu, manager) {
-    manager.nextState = createGame(menu.levels[0]);
-    manager.fadeCount = 0;
+    return makeTransition(manager, createGame(menu.levels[0]));
 }
 function clickGame(pos, game, manager) {
     if (game.board.completed) {
-        manager.nextState = createMenu();
-        manager.fadeCount = 0;
-        return;
+        return makeTransition(manager, createMenu());
     }
     const coord = posToCoord(pos, game);
     if (!isReachableCoord(coord, game.board))
-        return;
+        return manager;
     const board2 = move(game.board, coord);
     if (board2 !== null) {
         game.prevPlayer = game.board.player;
         game.board = board2;
         game.moveElapse = 0;
     }
+    return manager;
 }
 function click(pos, manager) {
     if (manager.nextState !== null)
-        return;
+        return manager;
     switch (manager.state.type) {
         case "menu":
-            clickMenu(pos, manager.state, manager);
+            return clickMenu(pos, manager.state, manager);
             break;
         case "game":
-            clickGame(pos, manager.state, manager);
+            return clickGame(pos, manager.state, manager);
             break;
     }
 }
@@ -351,25 +367,30 @@ function createScreen(width, height) {
     canvas.height = height;
     const screen = canvas.getContext("2d");
     if (screen === null)
-        throw new Error("context2d not found");
+        throw new Error("screen2d not found");
     return screen;
 }
 window.onload = () => {
     const canvas = document.getElementById("canvas");
     if (canvas === null || !(canvas instanceof HTMLCanvasElement))
         throw new Error("canvas not found");
-    const context = canvas.getContext("2d");
-    if (context === null)
-        throw new Error("context2d not found");
+    const screen = canvas.getContext("2d");
+    if (screen === null)
+        throw new Error("screen2d not found");
     const menu = createMenu();
     const resources = loadResources();
-    const manager = {
+    let manager = {
         state: menu,
         nextState: null,
         fadeCount: 0,
     };
     canvas.addEventListener("click", (event) => {
-        click({ x: event.offsetX, y: event.offsetY }, manager);
+        manager = click({ x: event.offsetX, y: event.offsetY }, manager);
     });
-    draw(context, manager, resources);
+    loop(screen);
+    function loop(screen) {
+        manager = updateManager(manager);
+        draw(screen, manager, resources);
+        requestAnimationFrame(() => loop(screen));
+    }
 };
