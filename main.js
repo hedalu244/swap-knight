@@ -166,18 +166,6 @@ function loadResources() {
         return audio;
     }
 }
-function coordToPos(coord, game) {
-    return {
-        x: coord.x * game.cellSize + game.originX,
-        y: coord.y * game.cellSize + game.originY,
-    };
-}
-function posToCoord(pos, game) {
-    return {
-        x: Math.round((pos.x - game.originX) / game.cellSize),
-        y: Math.round((pos.y - game.originY) / game.cellSize),
-    };
-}
 function createGame(level) {
     const maxBoardWidth = 300;
     const maxBoardHeight = 300;
@@ -198,6 +186,18 @@ function createGame(level) {
         originY,
     };
 }
+function coordToPos(coord, game) {
+    return {
+        x: coord.x * game.cellSize + game.originX,
+        y: coord.y * game.cellSize + game.originY,
+    };
+}
+function posToCoord(pos, game) {
+    return {
+        x: Math.round((pos.x - game.originX) / game.cellSize),
+        y: Math.round((pos.y - game.originY) / game.cellSize),
+    };
+}
 function createMenu() {
     return {
         type: "menu",
@@ -210,6 +210,11 @@ function createMenu() {
                 width: 3,
                 height: 3,
             }],
+    };
+}
+function createTitle() {
+    return {
+        type: "title",
     };
 }
 function createManager(state) {
@@ -243,6 +248,9 @@ function updateManager(manager) {
     }
     return manager;
 }
+function clickTitle(pos, title, manager) {
+    return makeTransition(manager, createMenu());
+}
 function clickMenu(pos, menu, manager) {
     return makeTransition(manager, createGame(menu.levels[0]));
 }
@@ -265,17 +273,19 @@ function click(pos, manager) {
     if (manager.nextState !== null)
         return manager;
     switch (manager.state.type) {
-        case "menu":
-            return clickMenu(pos, manager.state, manager);
-            break;
-        case "game":
-            return clickGame(pos, manager.state, manager);
-            break;
+        case "menu": return clickMenu(pos, manager.state, manager);
+        case "game": return clickGame(pos, manager.state, manager);
+        case "title": return clickTitle(pos, manager.state, manager);
+        default: return manager;
     }
 }
 function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
     screen.fillText("menu", 100, 100);
+}
+function drawTitle(screen, title, resources) {
+    screen.fillStyle = "black";
+    screen.fillText("title", 100, 100);
 }
 function drawGlid(screen, game, resources) {
     //グリッドを描画
@@ -339,6 +349,9 @@ function drawState(screen, state, resources) {
         case "game":
             drawGame(screen, state, resources);
             break;
+        case "title":
+            drawTitle(screen, state, resources);
+            break;
     }
 }
 function fade(screen, fade) {
@@ -384,9 +397,9 @@ window.onload = () => {
     const screen = canvas.getContext("2d");
     if (screen === null)
         throw new Error("screen2d not found");
-    const menu = createMenu();
+    const title = createTitle();
     const resources = loadResources();
-    let manager = createManager(menu);
+    let manager = createManager(title);
     canvas.addEventListener("click", (event) => {
         manager = click({ x: event.offsetX, y: event.offsetY }, manager);
     });

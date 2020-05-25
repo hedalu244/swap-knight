@@ -214,18 +214,15 @@ interface Pos {
     readonly y: number;
 }
 
-function coordToPos(coord: Coord, game: Game): Pos {
-    return {
-        x: coord.x * game.cellSize + game.originX,
-        y: coord.y * game.cellSize + game.originY,
-    };
-}
-
-function posToCoord(pos: Pos, game: Game): Coord {
-    return {
-        x: Math.round((pos.x - game.originX) / game.cellSize),
-        y: Math.round((pos.y - game.originY) / game.cellSize),
-    };
+interface Game {
+    type: "game",
+    board: Board,
+    level: Level,
+    prevPlayer: Coord,
+    moveElapse: number,
+    cellSize: number,
+    originX: number,
+    originY: number,
 }
 
 function createGame(level: Level): Game {
@@ -252,15 +249,18 @@ function createGame(level: Level): Game {
     };
 }
 
-interface Game {
-    type: "game",
-    board: Board,
-    level: Level,
-    prevPlayer: Coord,
-    moveElapse: number,
-    cellSize: number,
-    originX: number,
-    originY: number,
+function coordToPos(coord: Coord, game: Game): Pos {
+    return {
+        x: coord.x * game.cellSize + game.originX,
+        y: coord.y * game.cellSize + game.originY,
+    };
+}
+
+function posToCoord(pos: Pos, game: Game): Coord {
+    return {
+        x: Math.round((pos.x - game.originX) / game.cellSize),
+        y: Math.round((pos.y - game.originY) / game.cellSize),
+    };
 }
 
 interface Menu {
@@ -283,7 +283,17 @@ function createMenu(): Menu {
     };
 }
 
-type State = Game | Menu;
+interface Title {
+    type: "title";
+}
+
+function createTitle(): Title {
+    return {
+        type: "title",
+    }
+}
+
+type State = Game | Menu | Title;
 
 interface Manager {
     readonly state: State;
@@ -325,6 +335,10 @@ function updateManager(manager: Manager): Manager {
     return manager;
 }
 
+function clickTitle(pos: Pos, title: Title, manager: Manager): Manager {
+    return makeTransition(manager, createMenu());
+}
+
 function clickMenu(pos: Pos, menu: Menu, manager: Manager): Manager {
     return makeTransition(manager, createGame(menu.levels[0]));
 }
@@ -349,8 +363,10 @@ function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
 function click(pos: Pos, manager: Manager): Manager {
     if (manager.nextState !== null) return manager;
     switch (manager.state.type) {
-        case "menu": return clickMenu(pos, manager.state, manager); break;
-        case "game": return clickGame(pos, manager.state, manager); break;
+        case "menu": return clickMenu(pos, manager.state, manager);
+        case "game": return clickGame(pos, manager.state, manager);
+        case "title": return clickTitle(pos, manager.state, manager);
+        default: return manager;
     }
 }
 
@@ -359,6 +375,10 @@ function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
     screen.fillText("menu", 100, 100);
 }
 
+function drawTitle(screen: Screen2D, title: Title, resources: Resources) {
+    screen.fillStyle = "black";
+    screen.fillText("title", 100, 100);
+}
 
 function drawGlid(screen: Screen2D, game: Game, resources: Resources) {
     //グリッドを描画
@@ -449,6 +469,7 @@ function drawState(screen: Screen2D, state: State, resources: Resources) {
     switch (state.type) {
         case "menu": drawMenu(screen, state, resources); break;
         case "game": drawGame(screen, state, resources); break;
+        case "title": drawTitle(screen, state, resources); break;
     }
 }
 
@@ -501,9 +522,9 @@ window.onload = () => {
     if (screen === null)
         throw new Error("screen2d not found");
 
-    const menu = createMenu();
+    const title = createTitle();
     const resources = loadResources();
-    let manager: Manager = createManager(menu);
+    let manager: Manager = createManager(title);
 
     canvas.addEventListener("click", (event) => {
         manager = click({ x: event.offsetX, y: event.offsetY }, manager);
