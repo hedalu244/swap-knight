@@ -194,11 +194,10 @@ function loadResources() {
             bishop: loadImage("resources/images/bishop.svg"),
         },
         correctPieces: {
-            player: loadImage("resources/images/player.svg"),
-            pawn: loadImage("resources/images/pawn.svg"),
-            knight: loadImage("resources/images/knight.svg"),
-            rook: loadImage("resources/images/rook.svg"),
-            bishop: loadImage("resources/images/bishop.svg"),
+            pawn: loadImage("resources/images/pawn_ref.svg"),
+            knight: loadImage("resources/images/knight_ref.svg"),
+            rook: loadImage("resources/images/rook_ref.svg"),
+            bishop: loadImage("resources/images/bishop_ref.svg"),
         },
         glids: {
             1: loadImage("resources/images/glid1.svg"),
@@ -496,6 +495,7 @@ function drawBoard(screen: Screen2D, board: Board, resources: Resources) {
     board.moveElapse++;
 
     drawGlid(screen, board, resources);
+    drawCorrectPieces(screen, board, resources);
     drawPieces(screen, board, resources);
 }
 
