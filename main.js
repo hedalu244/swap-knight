@@ -279,7 +279,7 @@ function updateManager(manager) {
             tick: manager.tick + 1,
         };
     }
-    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.moveTimeStamp)
+    if (manager.state.type === "title" && manager.state.board.completed && 45 < manager.tick - manager.state.board.moveTimeStamp)
         manager = makeTransition(manager, createMenu());
     return {
         state: manager.state,
@@ -387,12 +387,31 @@ function drawPieces(screen, board, resources, tick) {
 }
 function drawEffects(screen, board, resources, tick) {
     board.effects.forEach(effect => {
-        const elapse = tick - effect.timeStamp - animationLength - 10;
-        if (elapse < 0 || 30 < elapse)
+        const phase = (tick - effect.timeStamp - animationLength - 10) / 45;
+        if (phase < 0 || 1 < phase)
             return;
         const pos = coordToPos(effect.coord, board);
-        screen.fillStyle = "red";
-        screen.fillRect(pos.x - 20, pos.y - 20, 40, 40);
+        const circlePhase = Math.min(1, phase * 2);
+        const circleRange = 0.5 * board.params.cellSize * (circlePhase) * (2 - circlePhase);
+        const circleAlpha = Math.min(0.3, 1 - circlePhase);
+        const particleRange = 0.8 * board.params.cellSize * (1 - (1 - phase) * (1 - phase) * (1 - phase));
+        const particleLength = 0.2 * board.params.cellSize * (phase) * (1 - phase);
+        ;
+        screen.fillStyle = "black";
+        screen.globalAlpha = circleAlpha;
+        screen.beginPath();
+        screen.arc(pos.x, pos.y, circleRange, 0, Math.PI * 2, true);
+        screen.fill();
+        screen.globalAlpha = 1;
+        screen.strokeStyle = "black";
+        screen.lineCap = "round";
+        screen.lineWidth = board.params.cellSize * 0.04;
+        [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875].forEach(angle => {
+            screen.beginPath();
+            screen.moveTo(pos.x + particleRange * Math.cos(angle * Math.PI * 2), pos.y + particleRange * Math.sin(angle * Math.PI * 2));
+            screen.lineTo(pos.x + (particleRange + particleLength) * Math.cos(angle * Math.PI * 2), pos.y + (particleRange + particleLength) * Math.sin(angle * Math.PI * 2));
+            screen.stroke();
+        });
     });
 }
 function drawBoard(screen, board, resources, tick) {
