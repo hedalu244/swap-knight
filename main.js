@@ -302,8 +302,8 @@ function createMenu() {
                     y: originY + buttonMarginY * (Math.floor(i / 5)),
                 },
                 size: buttonSize,
-                text: (i + 1).toString(),
                 board: createBoard(level),
+                thumbnail: undefined,
             };
         }),
     };
@@ -491,21 +491,20 @@ function drawEffects(screen, board, params, resources, tick) {
         });
     });
 }
-function drawBoard(screen, board, params, resources, tick, thumbnail) {
+function drawThumbnail(screen, board, params, resources, tick) {
     drawGlid(screen, board, params, resources);
-    if (thumbnail) {
-        drawReferencePieces(screen, board, params, resources);
-    }
-    else {
-        screen.globalAlpha = 0.1;
-        drawReferencePieces(screen, board, params, resources);
-        drawPieces(screen, board, params, resources, tick);
-        drawEffects(screen, board, params, resources, tick);
-        screen.globalAlpha = 1;
-    }
+    drawReferencePieces(screen, board, params, resources);
+}
+function drawBoard(screen, board, params, resources, tick) {
+    drawGlid(screen, board, params, resources);
+    screen.globalAlpha = 0.1;
+    drawReferencePieces(screen, board, params, resources);
+    drawPieces(screen, board, params, resources, tick);
+    drawEffects(screen, board, params, resources, tick);
+    screen.globalAlpha = 1;
 }
 function drawGame(screen, game, resources, tick) {
-    drawBoard(screen, game.board, gameDrawParams, resources, tick, false);
+    drawBoard(screen, game.board, gameDrawParams, resources, tick);
     if (30 < tick - game.board.moveTimeStamp && game.board.completed) {
         fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.moveTimeStamp - 30) / 30)));
         screen.drawImage(resources.completed, 80, 0, 480, 480);
@@ -514,8 +513,12 @@ function drawGame(screen, game, resources, tick) {
 function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
     menu.buttons.forEach(button => {
+        if (button.thumbnail === undefined) {
+            button.thumbnail = createScreen(button.size, button.size);
+            drawThumbnail(button.thumbnail, button.board, { pos: { x: button.size / 2, y: button.size / 2 }, scale: button.size - 30 }, resources, 0);
+        }
         screen.strokeRect(button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
-        drawBoard(screen, button.board, { pos: button.pos, scale: button.size - 10 }, resources, 0, true);
+        screen.drawImage(button.thumbnail.canvas, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
     });
 }
 const titleDrawParams = {
@@ -527,7 +530,7 @@ const gameDrawParams = {
     scale: 440,
 };
 function drawTitle(screen, title, resources, tick) {
-    drawBoard(screen, title.board, titleDrawParams, resources, tick, false);
+    drawBoard(screen, title.board, titleDrawParams, resources, tick);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
 function drawState(screen, state, resources, tick) {

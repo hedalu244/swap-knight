@@ -293,8 +293,8 @@ function posToCoord(pos: Pos, board: Board, params: BoardDrawParams): Coord {
 interface LevelSelectButton {
     pos: Pos;
     size: number;
-    text: string;
     board: Board;
+    thumbnail: Screen2D | undefined;
 }
 
 interface Menu {
@@ -385,8 +385,8 @@ function createMenu(): Menu {
                     y: originY + buttonMarginY * (Math.floor(i / 5)),
                 },
                 size: buttonSize,
-                text: (i + 1).toString(),
                 board: createBoard(level),
+                thumbnail: undefined,
             };
         }),
     };
@@ -647,22 +647,23 @@ function drawEffects(screen: Screen2D, board: Board, params: BoardDrawParams, re
     });
 }
 
-function drawBoard(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number, thumbnail: boolean) {
+
+function drawThumbnail(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number) {
     drawGlid(screen, board, params, resources);
-    if(thumbnail) {
-        drawReferencePieces(screen, board, params, resources);
-    }
-    else {
+    drawReferencePieces(screen, board, params, resources);
+}
+
+function drawBoard(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number) {
+    drawGlid(screen, board, params, resources);
         screen.globalAlpha = 0.1;
         drawReferencePieces(screen, board, params, resources);
         drawPieces(screen, board, params, resources, tick);
         drawEffects(screen, board, params, resources, tick);
         screen.globalAlpha = 1;
-    }
 }
 
 function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: number) {
-    drawBoard(screen, game.board, gameDrawParams, resources, tick, false);
+    drawBoard(screen, game.board, gameDrawParams, resources, tick);
 
     if (30 < tick - game.board.moveTimeStamp && game.board.completed) {
         fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.moveTimeStamp - 30) / 30)));
@@ -673,8 +674,12 @@ function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: numb
 function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
     screen.fillStyle = "black";
     menu.buttons.forEach(button => {
+        if(button.thumbnail === undefined){
+            button.thumbnail = createScreen(button.size, button.size);
+            drawThumbnail(button.thumbnail, button.board, { pos: {x: button.size / 2, y: button.size / 2}, scale: button.size - 30 }, resources, 0);
+        }
         screen.strokeRect(button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
-        drawBoard(screen, button.board, { pos: button.pos, scale: button.size - 10 }, resources, 0, true);
+        screen.drawImage(button.thumbnail.canvas, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
     });
 }
 
@@ -689,7 +694,7 @@ const gameDrawParams: BoardDrawParams = {
 
 
 function drawTitle(screen: Screen2D, title: Title, resources: Resources, tick: number) {
-    drawBoard(screen, title.board, titleDrawParams, resources, tick, false);
+    drawBoard(screen, title.board, titleDrawParams, resources, tick);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
 
