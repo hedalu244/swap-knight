@@ -257,11 +257,11 @@ function createMenu() {
             ["knight", "blank", "blank", "knight"],
         ],
         [
-            ["blank", "blank", "blank", "blank", "blank"],
-            ["blank", "blank", "knight", "blank", "blank"],
-            ["blank", "blank", "blank", "blank", "blank"],
-            ["pawn", "pawn", "pawn", "pawn", "pawn"],
-            ["rook", "bishop", "bishop", "bishop", "rook"],
+            ["blank", "blank", "blank", "pawn", "rook"],
+            ["blank", "blank", "blank", "pawn", "bishop"],
+            ["blank", "knight", "blank", "pawn", "bishop"],
+            ["blank", "blank", "blank", "pawn", "bishop"],
+            ["blank", "blank", "blank", "pawn", "rook"],
         ],
         [
             [undefined, "rook", "blank", "knight", undefined],

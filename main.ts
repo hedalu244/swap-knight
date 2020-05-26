@@ -340,11 +340,11 @@ function createMenu(): Menu {
             ["knight", "blank", "blank", "knight"],
         ],
         [
-            ["blank", "blank", "blank", "blank", "blank"],
-            ["blank", "blank", "knight", "blank", "blank"],
-            ["blank", "blank", "blank", "blank", "blank"],
-            ["pawn", "pawn", "pawn", "pawn", "pawn"],
-            ["rook", "bishop", "bishop", "bishop", "rook"],
+            ["blank", "blank", "blank", "pawn", "rook"],
+            ["blank", "blank", "blank", "pawn", "bishop"],
+            ["blank", "knight", "blank", "pawn", "bishop"],
+            ["blank", "blank", "blank", "pawn", "bishop"],
+            ["blank", "blank", "blank", "pawn", "rook"],
         ],
         [
             [undefined, "rook", "blank", "knight", undefined],
@@ -506,7 +506,7 @@ function clickBoard(pos: Pos, board: Board, params: BoardDrawParams, timeStamp: 
 function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
     if (game.board.completed) {
         const progress = Math.max(manager.progress, game.index + 1);
-        return makeTransition({...manager, progress}, createMenu());
+        return makeTransition({ ...manager, progress }, createMenu());
     }
 
     const game2 = {
@@ -514,7 +514,7 @@ function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
         board: clickBoard(pos, game.board, gameDrawParams, manager.tick),
         index: game.index,
     };
-    
+
     if (game2.board.completed) {
         const progress = Math.max(manager.progress, game.index + 1);
         localStorage.setItem('progress', progress.toString());
@@ -706,8 +706,8 @@ function drawMenu(screen: Screen2D, menu: Menu, resources: Resources, progress: 
     screen.fillStyle = "black";
     menu.buttons.forEach((button, i) => {
         screen.drawImage(resources.button, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
-        
-        if(progress < i) {
+
+        if (progress < i) {
             screen.drawImage(resources.lock, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
             return;
         }
