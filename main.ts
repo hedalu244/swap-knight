@@ -150,7 +150,7 @@ function isReachableCoord(coord: Coord, board: Board): boolean {
 function shuffle(board: Board, count: number = 0, prevBoard: Board = board): Board {
     if (count <= 0) {
         if (board.completed)
-            return shuffle(board, board.cells.length * 5 + Math.random() * 5);
+            return shuffle(board, board.params.width * board.params.height * 5 + Math.random() * 5);
         return board;
     }
 
@@ -328,6 +328,39 @@ function createMenu(): Menu {
             ["blank", "knight", "knight", "blank"],
             ["pawn", "blank", "blank", "pawn"],
         ],
+        [
+            [undefined, "rook", "blank", "rook", undefined],
+            ["bishop", "blank", "blank", "blank", "bishop"],
+            ["blank", "blank", "knight", "blank", "blank"],
+            ["bishop", "blank", "blank", "blank", "bishop"],
+            [undefined, "rook", "blank", "rook", undefined],
+        ],
+        [
+            ["blank", "blank", "blank", "blank", "blank"],
+            ["blank", "blank", "knight", "blank", "blank"],
+            ["blank", "blank", "blank", "blank", "blank"],
+            ["pawn", "pawn", "pawn", "pawn", "pawn"],
+            ["rook", "bishop", "bishop", "bishop", "rook"],
+        ],
+        [
+            [undefined, "rook", "blank", "knight", undefined],
+            ["pawn", "blank", "blank", "blank", "bishop"],
+            ["blank", "blank", undefined, "blank", "blank"],
+            ["bishop", "blank", "blank", "blank", "pawn"],
+            [undefined, "knight", "blank", "rook", undefined],
+        ],
+        [
+            ["knight", "knight", "knight", "knight", ],
+            ["knight", "blank", "blank", "knight",],
+            ["knight", "blank", "blank", "knight", ],
+            ["knight", "knight", "knight", "knight",],
+        ],
+        [
+            ["pawn", "rook", "bishop", "pawn", ],
+            ["bishop", "knight", "blank", "rook",],
+            ["rook", "blank", "blank", "bishop", ],
+            ["pawn", "bishop", "rook", "pawn",],
+        ],
     ];
     const buttonWidth = 60;
     const buttonHeight = 40;
@@ -339,8 +372,8 @@ function createMenu(): Menu {
     return {
         type: "menu",
         buttons: levels.map((level, i) => {
-            const x = i % 5 - 2;
-            const y = Math.floor(i / 5);
+            const x = i % 4 - 2.5;
+            const y = Math.floor(i / 4);
             return {
                 left: originX + buttonMarginX * x - buttonWidth / 2,
                 right: originX + buttonMarginX * x + buttonWidth / 2,

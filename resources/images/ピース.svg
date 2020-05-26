@@ -25,11 +25,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.3833896"
-     inkscape:cx="-102.48625"
-     inkscape:cy="64.585052"
+     inkscape:zoom="2.7503169"
+     inkscape:cx="203.76415"
+     inkscape:cy="2.2759642"
      inkscape:document-units="px"
-     inkscape:current-layer="layer5"
+     inkscape:current-layer="layer4"
      showgrid="true"
      units="px"
      inkscape:window-width="1920"
@@ -49,7 +49,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -168,7 +168,7 @@
      inkscape:groupmode="layer"
      id="layer4"
      inkscape:label="ビショップ"
-     sodipodi:insensitive="true">
+     style="display:inline">
     <g
        id="g1658"
        transform="translate(304)">
@@ -204,15 +204,12 @@
          cx="50"
          id="path1641"
          style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
-      <rect
-         ry="0"
-         transform="rotate(-57.350114)"
-         y="52.731213"
-         x="7.8466206"
-         height="4"
-         width="15.999999"
-         id="rect1643"
-         style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <path
+         style="fill:none;stroke:#fdffff;stroke-width:4;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         d="m 58,8 c 0,14 -8,10 -8,24"
+         id="path10861"
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="cc" />
     </g>
   </g>
   <g
