@@ -251,6 +251,12 @@ function createMenu() {
             [undefined, "rook", "blank", "rook", undefined],
         ],
         [
+            ["knight", "blank", "blank", "knight"],
+            ["blank", "pawn", "pawn", "blank"],
+            ["blank", "pawn", "pawn", "blank"],
+            ["knight", "blank", "blank", "knight"],
+        ],
+        [
             ["blank", "blank", "blank", "blank", "blank"],
             ["blank", "blank", "knight", "blank", "blank"],
             ["blank", "blank", "blank", "blank", "blank"],
@@ -269,6 +275,14 @@ function createMenu() {
             ["knight", "blank", "blank", "knight",],
             ["knight", "blank", "blank", "knight",],
             ["knight", "knight", "knight", "knight",],
+        ],
+        [
+            [undefined, "blank", "rook", "knight", "blank", undefined],
+            ["blank", undefined, "blank", "blank", undefined, "blank"],
+            ["pawn", "blank", undefined, undefined, "blank", "bishop"],
+            ["bishop", "blank", undefined, undefined, "blank", "pawn"],
+            ["blank", undefined, "blank", "blank", undefined, "blank"],
+            [undefined, "blank", "knight", "rook", "blank", undefined],
         ],
         [
             ["pawn", "rook", "bishop", "pawn",],
