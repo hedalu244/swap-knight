@@ -16,9 +16,10 @@ function flat(array) {
 }
 function createBoard(level) {
     const cells = level.map(row => row.map(piece => piece !== undefined ? { reference: piece, current: piece } : undefined));
-    const knightSearch = flat(level.map((row, x) => row.map((piece, y) => ({ piece, coord: { x, y } })))).find(x => x.piece === "knight");
-    if (knightSearch === undefined)
+    const knightSearch = flat(level.map((row, x) => row.map((piece, y) => ({ piece, coord: { x, y } })))).filter(x => x.piece === "knight");
+    if (knightSearch.length === 0)
         throw new Error("board must have a knight");
+    const player = knightSearch[Math.floor(Math.random() * knightSearch.length)].coord;
     const width = cells.length;
     const height = Math.max(...cells.map(x => x.length));
     const cellSize = Math.min(1 / width, 1 / height);
@@ -26,8 +27,8 @@ function createBoard(level) {
     return {
         cells,
         effects: [],
-        player: knightSearch.coord,
-        prevPlayer: knightSearch.coord,
+        player: player,
+        prevPlayer: player,
         moveTimeStamp: 0,
         completed: true,
         cellSize,
