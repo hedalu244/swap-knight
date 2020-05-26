@@ -291,17 +291,17 @@ function createMenu() {
             ["pawn", "bishop", "rook", "pawn",],
         ],
     ];
-    const buttonWidth = 60;
-    const buttonHeight = 40;
-    const buttonMarginX = 70;
-    const buttonMarginY = 50;
+    const buttonWidth = 100;
+    const buttonHeight = 100;
+    const buttonMarginX = 120;
+    const buttonMarginY = 150;
     const originX = 320;
-    const originY = 40;
+    const originY = 180;
     return {
         type: "menu",
         buttons: levels.map((level, i) => {
-            const x = i % 4 - 2.5;
-            const y = Math.floor(i / 4);
+            const x = i % 5 - 2;
+            const y = Math.floor(i / 5);
             return {
                 left: originX + buttonMarginX * x - buttonWidth / 2,
                 right: originX + buttonMarginX * x + buttonWidth / 2,
