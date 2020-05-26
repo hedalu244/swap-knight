@@ -15,7 +15,7 @@ function flat(array) {
     return array.reduce((prev, cur) => [...prev, ...cur], []);
 }
 function createBoard(level, centerPosX = 320, centerPosY = 240, maxBoardWidth = 600, maxBoardHeight = 440) {
-    const cells = level.map(row => row.map(piece => piece !== undefined ? { correct: piece, current: piece } : undefined));
+    const cells = level.map(row => row.map(piece => piece !== undefined ? { reference: piece, current: piece } : undefined));
     const knightSearch = flat(level.map((row, x) => row.map((piece, y) => ({ piece, coord: { x, y } })))).find(x => x.piece === "knight");
     if (knightSearch === undefined)
         throw new Error("board must have a knight");
@@ -42,7 +42,7 @@ function createBoard(level, centerPosX = 320, centerPosY = 240, maxBoardWidth = 
 }
 function setCell(cells, coord, piece) {
     return cells.map((row, x) => row.map((cell, y) => cell !== undefined && x == coord.x && y == coord.y
-        ? { correct: cell.correct, current: piece } : cell));
+        ? { reference: cell.reference, current: piece } : cell));
 }
 //範囲外ならundefined
 function getCell(cells, coord) {
@@ -59,14 +59,14 @@ function getDestinationCoord(coord, direction) {
     };
 }
 //特定のマスが初期配置に戻されているか
-function isCorrect(cell) {
+function isReference(cell) {
     if (cell === undefined)
         return true;
-    return cell.correct === cell.current;
+    return cell.reference === cell.current;
 }
 //クリアしたか？(全てのマスが初期配置に戻されているか)
 function isCompleted(cells) {
-    return cells.every(row => row.every(cell => isCorrect(cell)));
+    return cells.every(row => row.every(cell => isReference(cell)));
 }
 //移動後のBoardを返す
 function move(board, to, timeStamp) {
@@ -79,9 +79,9 @@ function move(board, to, timeStamp) {
         return null;
     const cells = setCell(setCell(board.cells, board.player, toCell.current), to, fromCell.current);
     const additionalEffects = [
-        ...(fromCell.correct !== "blank" && isCorrect({ current: toCell.current, correct: fromCell.correct })
+        ...(fromCell.reference !== "blank" && isReference({ current: toCell.current, reference: fromCell.reference })
             ? [{ coord: board.player, timeStamp }] : []),
-        ...(toCell.correct !== "blank" && isCorrect({ current: fromCell.current, correct: toCell.correct })
+        ...(toCell.reference !== "blank" && isReference({ current: fromCell.current, reference: toCell.reference })
             ? [{ coord: to, timeStamp }] : []),
     ];
     return {
@@ -118,7 +118,7 @@ function shuffle(board, count = 0, prevBoard = board) {
         if (board2 === null)
             return [];
         //既に揃っているマスには積極的に進める
-        if (isCorrect(cell))
+        if (isReference(cell))
             return [board2, board2, board2];
         return [board2];
     }));
@@ -155,7 +155,7 @@ function loadResources() {
             rook: loadImage("resources/images/rook.svg"),
             bishop: loadImage("resources/images/bishop.svg"),
         },
-        correctPieces: {
+        referencePieces: {
             pawn: loadImage("resources/images/pawn_ref.svg"),
             knight: loadImage("resources/images/knight_ref.svg"),
             rook: loadImage("resources/images/rook_ref.svg"),
@@ -346,11 +346,11 @@ function drawGlid(screen, board, resources) {
         }
     }
 }
-function drawCorrectPieces(screen, board, resources) {
+function drawReferencePieces(screen, board, resources) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
-        if (cell !== undefined && cell.correct !== "blank") {
+        if (cell !== undefined && cell.reference !== "blank") {
             const pos = coordToPos({ x, y }, board);
-            screen.drawImage(resources.correctPieces[cell.correct], pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+            screen.drawImage(resources.referencePieces[cell.reference], pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
         }
     }));
 }
@@ -416,7 +416,7 @@ function drawEffects(screen, board, resources, tick) {
 }
 function drawBoard(screen, board, resources, tick) {
     drawGlid(screen, board, resources);
-    drawCorrectPieces(screen, board, resources);
+    drawReferencePieces(screen, board, resources);
     drawPieces(screen, board, resources, tick);
     drawEffects(screen, board, resources, tick);
 }
