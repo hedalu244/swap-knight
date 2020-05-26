@@ -145,6 +145,8 @@ function loadResources() {
         title: loadImage("resources/images/title.svg"),
         reachable: loadImage("resources/images/reachable.svg"),
         completed: loadImage("resources/images/completed.svg"),
+        button: loadImage("resources/images/button.svg"),
+        lock: loadImage("resources/images/lock.svg"),
         pieces: {
             player: loadImage("resources/images/player.svg"),
             pawn: loadImage("resources/images/pawn.svg"),
@@ -202,10 +204,11 @@ function loadResources() {
         return audio;
     }
 }
-function createGame(board) {
+function createGame(board, index) {
     return {
         type: "game",
         board: shuffle(board),
+        index: index,
     };
 }
 function coordToPos(coord, board, params) {
@@ -318,12 +321,13 @@ function createTitle() {
         ])),
     };
 }
-function createManager(state) {
+function createManager(state, progress) {
     return {
         state: state,
         nextState: null,
         transitionTimeStamp: 0,
         tick: 0,
+        progress: progress,
     };
 }
 function makeTransition(manager, nextState) {
@@ -332,6 +336,7 @@ function makeTransition(manager, nextState) {
         nextState: nextState,
         transitionTimeStamp: manager.tick,
         tick: manager.tick,
+        progress: manager.progress,
     };
 }
 function updateManager(manager) {
@@ -342,6 +347,7 @@ function updateManager(manager) {
                 nextState: null,
                 transitionTimeStamp: manager.transitionTimeStamp,
                 tick: manager.tick + 1,
+                progress: manager.progress,
             };
         }
         return {
@@ -349,6 +355,7 @@ function updateManager(manager) {
             nextState: manager.nextState,
             transitionTimeStamp: manager.transitionTimeStamp,
             tick: manager.tick + 1,
+            progress: manager.progress,
         };
     }
     if (manager.state.type === "title" && manager.state.board.completed && 45 < manager.tick - manager.state.board.moveTimeStamp)
@@ -358,6 +365,7 @@ function updateManager(manager) {
         nextState: manager.nextState,
         transitionTimeStamp: manager.transitionTimeStamp,
         tick: manager.tick + 1,
+        progress: manager.progress,
     };
 }
 function clickTitle(pos, title, manager) {
@@ -369,16 +377,17 @@ function clickTitle(pos, title, manager) {
         state: title2,
         nextState: manager.nextState,
         transitionTimeStamp: manager.transitionTimeStamp,
-        tick: manager.tick
+        tick: manager.tick,
+        progress: manager.progress,
     };
 }
 function clickMenu(pos, menu, manager) {
-    const clicked = menu.buttons.find(button => button.pos.x - button.size / 2 < pos.x &&
+    const clicked = menu.buttons.findIndex(button => button.pos.x - button.size / 2 < pos.x &&
         pos.x <= button.pos.x + button.size / 2 &&
         button.pos.y - button.size / 2 < pos.y &&
         pos.y <= button.pos.y + button.size / 2);
-    if (clicked !== undefined)
-        return makeTransition(manager, createGame(clicked.board));
+    if (clicked !== -1 && clicked <= manager.progress)
+        return makeTransition(manager, createGame(menu.buttons[clicked].board, clicked));
     return manager;
 }
 function clickBoard(pos, board, params, timeStamp) {
@@ -389,17 +398,24 @@ function clickBoard(pos, board, params, timeStamp) {
 }
 function clickGame(pos, game, manager) {
     if (game.board.completed) {
-        return makeTransition(manager, createMenu());
+        const progress = Math.max(manager.progress, game.index + 1);
+        return makeTransition(Object.assign(Object.assign({}, manager), { progress }), createMenu());
     }
     const game2 = {
         type: "game",
         board: clickBoard(pos, game.board, gameDrawParams, manager.tick),
+        index: game.index,
     };
+    if (game2.board.completed) {
+        const progress = Math.max(manager.progress, game.index + 1);
+        localStorage.setItem('progress', progress.toString());
+    }
     return {
         state: game2,
         nextState: manager.nextState,
         transitionTimeStamp: manager.transitionTimeStamp,
         tick: manager.tick,
+        progress: manager.progress,
     };
 }
 function click(pos, manager) {
@@ -492,7 +508,6 @@ function drawEffects(screen, board, params, resources, tick) {
     });
 }
 function drawThumbnail(screen, board, params, resources, tick) {
-    //グリッドを描画
     for (let x = 0; x < board.width; x++) {
         for (let y = 0; y < board.height; y++) {
             if (getCell(board.cells, { x: x + 0, y: y + 0 }) !== undefined) {
@@ -520,19 +535,23 @@ function drawGame(screen, game, resources, tick) {
         screen.drawImage(resources.completed, 80, 0, 480, 480);
     }
 }
-function drawMenu(screen, menu, resources) {
+function drawMenu(screen, menu, resources, progress) {
     screen.fillStyle = "black";
-    menu.buttons.forEach(button => {
+    menu.buttons.forEach((button, i) => {
+        screen.drawImage(resources.button, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
+        if (progress < i) {
+            screen.drawImage(resources.lock, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
+            return;
+        }
         if (button.thumbnail === undefined) {
             button.thumbnail = createScreen(button.size, button.size);
             drawThumbnail(button.thumbnail, button.board, { pos: { x: button.size / 2, y: button.size / 2 }, scale: button.size - 30 }, resources, 0);
         }
-        screen.strokeRect(button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
         screen.drawImage(button.thumbnail.canvas, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
     });
 }
 const titleDrawParams = {
-    pos: { x: 320, y: 300 },
+    pos: { x: 320, y: 320 },
     scale: 300,
 };
 const gameDrawParams = {
@@ -543,16 +562,16 @@ function drawTitle(screen, title, resources, tick) {
     drawBoard(screen, title.board, titleDrawParams, resources, tick);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
-function drawState(screen, state, resources, tick) {
+function drawState(screen, state, resources, manager) {
     switch (state.type) {
         case "menu":
-            drawMenu(screen, state, resources);
+            drawMenu(screen, state, resources, manager.progress);
             break;
         case "game":
-            drawGame(screen, state, resources, tick);
+            drawGame(screen, state, resources, manager.tick);
             break;
         case "title":
-            drawTitle(screen, state, resources, tick);
+            drawTitle(screen, state, resources, manager.tick);
             break;
     }
 }
@@ -571,16 +590,16 @@ function draw(screen, manager, resources) {
     screen.clearRect(0, 0, screen.canvas.width, screen.canvas.height);
     if (manager.nextState !== null) {
         if (manager.tick - manager.transitionTimeStamp < 30) {
-            drawState(screen, manager.state, resources, manager.tick);
+            drawState(screen, manager.state, resources, manager);
             fade(screen, (manager.tick - manager.transitionTimeStamp) / fadeoutLength);
         }
         if (30 <= manager.tick - manager.transitionTimeStamp) {
-            drawState(screen, manager.nextState, resources, manager.tick);
+            drawState(screen, manager.nextState, resources, manager);
             fade(screen, (fadeoutLength + fadeinLength - (manager.tick - manager.transitionTimeStamp)) / fadeinLength);
         }
     }
     else {
-        drawState(screen, manager.state, resources, manager.tick);
+        drawState(screen, manager.state, resources, manager);
     }
 }
 function createScreen(width, height, canvas = document.createElement("canvas")) {
@@ -598,7 +617,7 @@ window.onload = () => {
     const screen = createScreen(640, 480, canvas);
     const title = createTitle();
     const resources = loadResources();
-    let manager = createManager(title);
+    let manager = createManager(title, Number(localStorage.getItem('progress')));
     const rect = canvas.getBoundingClientRect();
     canvas.addEventListener("click", (event) => {
         manager = click({ x: event.clientX - rect.left, y: event.clientY - rect.top }, manager);
