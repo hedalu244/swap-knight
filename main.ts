@@ -194,6 +194,7 @@ function loadResources() {
         completed: loadImage("resources/images/completed.svg"),
         button: loadImage("resources/images/button.svg"),
         lock: loadImage("resources/images/lock.svg"),
+        thanks: loadImage("resources/images/thanks.svg"),
         pieces: {
             player: loadImage("resources/images/player.svg"),
             pawn: loadImage("resources/images/pawn.svg"),
@@ -379,7 +380,7 @@ function createMenu(): Menu {
     const buttonMarginX = 120;
     const buttonMarginY = 150;
     const originX = 320;
-    const originY = 180;
+    const originY = 160;
 
     return {
         type: "menu",
@@ -718,6 +719,8 @@ function drawMenu(screen: Screen2D, menu: Menu, resources: Resources, progress: 
         }
         screen.drawImage(button.thumbnail.canvas, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
     });
+    if(menu.buttons.length <= progress)
+        screen.drawImage(resources.thanks, 80, 0, 480, 480);
 }
 
 const titleDrawParams: BoardDrawParams = {

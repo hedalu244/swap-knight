@@ -26,7 +26,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.74390084"
-     inkscape:cx="-130.08768"
+     inkscape:cx="-359.28489"
      inkscape:cy="11.278305"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -45,7 +45,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -54,17 +54,51 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-169.99999)">
-    <text
-       xml:space="preserve"
+    <g
+       aria-label="Swap Knight"
        style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:13.33333302px;line-height:17.04999924;font-family:'Times New Roman';-inkscape-font-specification:'Times New Roman, ';text-align:center;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
-       x="239.67"
-       y="328.61331"
-       id="text4646"><tspan
-         sodipodi:role="line"
-         id="tspan4644"
-         x="239.67"
-         y="328.61331"
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '">Swap Knight</tspan></text>
+       id="text4646">
+      <path
+         d="m 107.637,296.83731 c -3.168,-2.112 -9.600002,-6.816 -12.384002,-8.736 -3.072,-2.112 -4.896,-3.168 -4.896,-7.872 v -10.656 c 0,-2.88 1.92,-6.144 4.8,-6.144 H 103.029 c 2.88,0 4.8,3.264 4.8,6.144 v 13.536 h 3.936 v -13.536 c 0,-4.8 -3.84,-8.928 -8.64,-9.024 h -0.096 c 0,0 0,0 0,0 h -7.872002 c -4.8,0 -8.64,4.224 -8.64,9.024 v 11.616 c 0,3.84 1.536,6.528 5.856,9.408 3.936,2.688 8.160002,5.76 11.712002,8.448 3.168,2.304 4.8,3.552 4.8,7.296 v 13.536 c 0,2.88 -2.016,6.144 -4.896,6.144 h -9.696002 c -2.88,0 -4.8,-3.264 -4.8,-6.144 v -13.536 h -3.936 v 13.536 c 0,4.8 3.84,8.928 8.544,9.024 H 104.085 c 4.8,-0.096 8.64,-4.224 8.64,-9.024 v -13.536 c 0,-2.496 -0.096,-6.048 -5.088,-9.504 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17549" />
+      <path
+         d="m 153.813,280.22931 -8.16,44.448 -6.528,-44.448 h -0.096 -3.072 l -6.624,44.448 -8.064,-44.448 h -3.648 l 8.736,48.384 h 2.688 0.672 2.4 l 5.376,-37.536 5.376,37.536 h 2.4 0.768 2.688 l 8.64,-48.384 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17551" />
+      <path
+         d="m 178.821,279.94131 h -0.864 -0.096 -7.68 -0.96 c -3.264,0 -5.856,2.88 -5.856,6.144 v 6.72 h 3.84 v -6.72 c 0,-1.344 0.864,-2.688 2.016,-3.072 0.288,-0.096 0.576,-0.192 0.96,-0.192 h 7.68 c 0.384,0 0.672,0.096 0.96,0.192 1.152,0.384 1.92,1.728 1.92,3.072 v 12.576 h -11.52 -1.056 c -3.168,0 -5.76,2.592 -5.76,5.76 v 18.144 c 0,3.168 2.592,6.048 5.76,6.048 h 1.056 11.52 3.936 v -2.88 -39.648 c 0,-3.264 -2.592,-6.144 -5.856,-6.144 z m 1.92,45.792 h -11.52 c -0.384,0 -0.672,-0.096 -1.056,-0.192 -1.056,-0.384 -1.92,-1.728 -1.92,-2.976 v -18.144 c 0,-1.248 0.864,-2.304 1.92,-2.688 0.384,-0.096 0.672,-0.192 1.056,-0.192 h 11.52 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17553" />
+      <path
+         d="m 212.181,280.22931 h -14.496 -3.84 v 63.84 h 3.84 v -15.456 h 12.576 c 3.264,0 5.856,-2.592 5.856,-5.856 v -38.688 c 0,-2.112 -1.728,-3.84 -3.936,-3.84 z m -14.496,2.88 h 13.536 c 0.576,0 0.96,0.48 0.96,0.96 v 38.688 c 0,1.344 -0.768,2.4 -1.92,2.784 -0.288,0.096 -0.576,0.192 -0.96,0.192 h -11.616 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17555" />
+      <path
+         d="m 266.097,328.61331 h 3.936 l -15.072,-40.32 14.112,-27.456 h -3.936 l -17.568,34.368 v -34.368 h -3.744 v 67.776 h 3.744 v -25.728 l 5.376,-10.464 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17557" />
+      <path
+         d="m 294.8685,279.94131 h -14.496 c -2.112,0 -3.84,2.016 -3.84,4.128 v 44.544 h 3.84 v -44.544 c 0,-0.48 0.48,-1.248 0.96,-1.248 h 12.576 c 0.576,0 0.96,0.768 0.96,1.248 v 44.544 h 3.936 v -44.544 c 0,-2.112 -1.728,-4.128 -3.936,-4.128 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17559" />
+      <path
+         d="m 312.0645,280.22931 h -3.936 v 48.384 h 3.936 z m 0,-13.728 h -3.936 v 7.776 h 3.936 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17561" />
+      <path
+         d="m 340.431,280.03731 -11.616,-0.096 h -0.96 c -3.264,0 -5.856,2.496 -5.856,5.664 v 37.152 c 0,3.264 2.592,5.856 5.856,5.856 h 0.96 11.616 v 9.6 c 0,1.344 -0.864,2.4 -2.016,2.784 -0.288,0.096 -0.576,0.192 -0.96,0.192 h -6.72 c -0.384,0 -0.672,-0.096 -0.96,-0.192 -1.152,-0.384 -1.92,-1.44 -1.92,-2.784 v -4.8 h -3.936 v 4.8 c 0,3.264 2.592,5.856 5.856,5.856 h 0.768 0.192 6.72 0.192 0.768 c 3.264,0 5.856,-2.592 5.856,-5.856 v -9.6 -2.976 -42.72 -2.88 z m 0,45.6 h -11.616 c -0.384,0 -0.672,0 -0.96,-0.096 -1.152,-0.48 -2.016,-1.536 -2.016,-2.784 v -37.152 c 0,-1.248 0.864,-2.208 2.016,-2.592 0.288,-0.096 0.576,-0.192 0.96,-0.192 l 11.616,0.096 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17563" />
+      <path
+         d="m 372.027,280.22931 h -14.592 v -19.392 h -3.84 v 67.776 h 3.84 v -45.504 h 13.536 c 0.576,0 1.056,0.48 1.056,0.96 v 44.544 h 3.84 v -44.544 c 0,-2.112 -1.728,-3.84 -3.84,-3.84 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17565" />
+      <path
+         d="m 393.639,325.73331 c -0.384,0 -0.672,-0.096 -0.96,-0.192 -1.152,-0.384 -1.92,-1.44 -1.92,-2.784 v -39.648 h 5.76 v -2.976 h -5.76 v -13.536 h -3.936 v 13.536 h -5.76 v 2.976 h 5.76 v 39.648 c 0,3.264 2.592,5.856 5.856,5.856 h 0.96 3.84 v -2.88 z"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:96px;font-family:'RBNo2 Light';-inkscape-font-specification:'RBNo2 Light, '"
+         id="path17567" />
+    </g>
     <path
        style="fill:none;stroke:#000000;stroke-width:3.64724422;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        d="M 42.75994,355.74941 H 437.24006"

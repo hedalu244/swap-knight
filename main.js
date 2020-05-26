@@ -148,6 +148,7 @@ function loadResources() {
         completed: loadImage("resources/images/completed.svg"),
         button: loadImage("resources/images/button.svg"),
         lock: loadImage("resources/images/lock.svg"),
+        thanks: loadImage("resources/images/thanks.svg"),
         pieces: {
             player: loadImage("resources/images/player.svg"),
             pawn: loadImage("resources/images/pawn.svg"),
@@ -296,7 +297,7 @@ function createMenu() {
     const buttonMarginX = 120;
     const buttonMarginY = 150;
     const originX = 320;
-    const originY = 180;
+    const originY = 160;
     return {
         type: "menu",
         buttons: levels.map((level, i) => {
@@ -550,6 +551,8 @@ function drawMenu(screen, menu, resources, progress) {
         }
         screen.drawImage(button.thumbnail.canvas, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
     });
+    if (menu.buttons.length <= progress)
+        screen.drawImage(resources.thanks, 80, 0, 480, 480);
 }
 const titleDrawParams = {
     pos: { x: 320, y: 320 },
