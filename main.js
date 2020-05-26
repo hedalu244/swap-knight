@@ -492,7 +492,17 @@ function drawEffects(screen, board, params, resources, tick) {
     });
 }
 function drawThumbnail(screen, board, params, resources, tick) {
-    drawGlid(screen, board, params, resources);
+    //グリッドを描画
+    for (let x = 0; x < board.width; x++) {
+        for (let y = 0; y < board.height; y++) {
+            if (getCell(board.cells, { x: x + 0, y: y + 0 }) !== undefined) {
+                const pos = coordToPos({ x, y }, board, params);
+                screen.lineWidth = 1.5;
+                screen.strokeStyle = "gray";
+                screen.strokeRect(pos.x - board.cellSize / 2 * params.scale, pos.y - board.cellSize / 2 * params.scale, board.cellSize * params.scale, board.cellSize * params.scale);
+            }
+        }
+    }
     drawReferencePieces(screen, board, params, resources);
 }
 function drawBoard(screen, board, params, resources, tick) {

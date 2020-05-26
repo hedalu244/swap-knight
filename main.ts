@@ -649,17 +649,31 @@ function drawEffects(screen: Screen2D, board: Board, params: BoardDrawParams, re
 
 
 function drawThumbnail(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number) {
-    drawGlid(screen, board, params, resources);
+    //グリッドを描画
+    for (let x = 0; x < board.width; x++) {
+        for (let y = 0; y < board.height; y++) {
+            if (getCell(board.cells, { x: x + 0, y: y + 0 }) !== undefined) {
+                const pos = coordToPos({ x, y }, board, params);
+                screen.lineWidth = 1.5;
+                screen.strokeStyle = "gray";
+                screen.strokeRect(
+                    pos.x - board.cellSize / 2 * params.scale,
+                    pos.y - board.cellSize / 2 * params.scale,
+                    board.cellSize * params.scale,
+                    board.cellSize * params.scale);
+            }
+        }
+    }
     drawReferencePieces(screen, board, params, resources);
 }
 
 function drawBoard(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number) {
     drawGlid(screen, board, params, resources);
-        screen.globalAlpha = 0.1;
-        drawReferencePieces(screen, board, params, resources);
-        drawPieces(screen, board, params, resources, tick);
-        drawEffects(screen, board, params, resources, tick);
-        screen.globalAlpha = 1;
+    screen.globalAlpha = 0.1;
+    drawReferencePieces(screen, board, params, resources);
+    drawPieces(screen, board, params, resources, tick);
+    drawEffects(screen, board, params, resources, tick);
+    screen.globalAlpha = 1;
 }
 
 function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: number) {
@@ -674,9 +688,9 @@ function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: numb
 function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
     screen.fillStyle = "black";
     menu.buttons.forEach(button => {
-        if(button.thumbnail === undefined){
+        if (button.thumbnail === undefined) {
             button.thumbnail = createScreen(button.size, button.size);
-            drawThumbnail(button.thumbnail, button.board, { pos: {x: button.size / 2, y: button.size / 2}, scale: button.size - 30 }, resources, 0);
+            drawThumbnail(button.thumbnail, button.board, { pos: { x: button.size / 2, y: button.size / 2 }, scale: button.size - 30 }, resources, 0);
         }
         screen.strokeRect(button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
         screen.drawImage(button.thumbnail.canvas, button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
