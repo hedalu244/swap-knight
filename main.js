@@ -288,8 +288,7 @@ function createMenu() {
             ["pawn", "bishop", "rook", "pawn",],
         ],
     ];
-    const buttonWidth = 100;
-    const buttonHeight = 100;
+    const buttonSize = 100;
     const buttonMarginX = 120;
     const buttonMarginY = 150;
     const originX = 320;
@@ -297,13 +296,12 @@ function createMenu() {
     return {
         type: "menu",
         buttons: levels.map((level, i) => {
-            const x = i % 5 - 2;
-            const y = Math.floor(i / 5);
             return {
-                left: originX + buttonMarginX * x - buttonWidth / 2,
-                right: originX + buttonMarginX * x + buttonWidth / 2,
-                top: originY + buttonMarginY * y - buttonHeight / 2,
-                bottom: originY + buttonMarginY * y + buttonHeight / 2,
+                pos: {
+                    x: originX + buttonMarginX * (i % 5 - 2),
+                    y: originY + buttonMarginY * (Math.floor(i / 5)),
+                },
+                size: buttonSize,
                 text: (i + 1).toString(),
                 board: createBoard(level),
             };
@@ -375,10 +373,10 @@ function clickTitle(pos, title, manager) {
     };
 }
 function clickMenu(pos, menu, manager) {
-    const clicked = menu.buttons.find(button => button.left < pos.x &&
-        pos.x <= button.right &&
-        button.top < pos.y &&
-        pos.y <= button.bottom);
+    const clicked = menu.buttons.find(button => button.pos.x - button.size / 2 < pos.x &&
+        pos.x <= button.pos.x + button.size / 2 &&
+        button.pos.y - button.size / 2 < pos.y &&
+        pos.y <= button.pos.y - button.size / 2);
     if (clicked !== undefined)
         return makeTransition(manager, createGame(clicked.board));
     return manager;
@@ -509,9 +507,8 @@ function drawGame(screen, game, resources, tick) {
 function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
     menu.buttons.forEach(button => {
-        screen.strokeRect(button.left, button.top, button.right - button.left, button.bottom - button.top);
-        screen.textAlign = "center";
-        screen.fillText(button.text, button.left, button.bottom);
+        screen.strokeRect(button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
+        drawBoard(screen, button.board, { pos: button.pos, scale: button.size - 10 }, resources, 0);
     });
 }
 const titleDrawParams = {
