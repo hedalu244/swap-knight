@@ -14,31 +14,26 @@ const knightMove = [
 function flat(array) {
     return array.reduce((prev, cur) => [...prev, ...cur], []);
 }
-function createBoard(level, centerPosX = 320, centerPosY = 240, maxBoardWidth = 600, maxBoardHeight = 440) {
+function createBoard(level) {
     const cells = level.map(row => row.map(piece => piece !== undefined ? { reference: piece, current: piece } : undefined));
     const knightSearch = flat(level.map((row, x) => row.map((piece, y) => ({ piece, coord: { x, y } })))).find(x => x.piece === "knight");
     if (knightSearch === undefined)
         throw new Error("board must have a knight");
     const width = cells.length;
     const height = Math.max(...cells.map(x => x.length));
-    const cellSize = Math.min(maxBoardWidth / width, maxBoardHeight / height);
-    const originX = centerPosX - cellSize * (width - 1) / 2;
-    const originY = centerPosY - cellSize * (height - 1) / 2;
-    return shuffle({
+    const cellSize = Math.min(1 / width, 1 / height);
+    ;
+    return {
         cells,
         effects: [],
         player: knightSearch.coord,
         prevPlayer: knightSearch.coord,
         moveTimeStamp: 0,
         completed: true,
-        params: {
-            cellSize,
-            originX,
-            originY,
-            width,
-            height,
-        }
-    });
+        cellSize,
+        width,
+        height,
+    };
 }
 function setCell(cells, coord, piece) {
     return cells.map((row, x) => row.map((cell, y) => cell !== undefined && x == coord.x && y == coord.y
@@ -91,7 +86,9 @@ function move(board, to, timeStamp) {
         completed: isCompleted(cells),
         prevPlayer: board.player,
         moveTimeStamp: timeStamp,
-        params: board.params,
+        width: board.width,
+        height: board.height,
+        cellSize: board.cellSize,
     };
 }
 //クリックできるところにあるか
@@ -103,7 +100,7 @@ function isReachableCoord(coord, board) {
 function shuffle(board, count = 0, prevBoard = board) {
     if (count <= 0) {
         if (board.completed)
-            return shuffle(board, board.params.width * board.params.height * 5 + Math.random() * 5);
+            return shuffle(board, board.width * board.height * 5 + Math.random() * 5);
         return board;
     }
     const possibleBoards = [].concat(...knightMove
@@ -205,22 +202,22 @@ function loadResources() {
         return audio;
     }
 }
-function createGame(level) {
+function createGame(board) {
     return {
         type: "game",
-        board: createBoard(level),
+        board: shuffle(board),
     };
 }
-function coordToPos(coord, board) {
+function coordToPos(coord, board, params) {
     return {
-        x: coord.x * board.params.cellSize + board.params.originX,
-        y: coord.y * board.params.cellSize + board.params.originY,
+        x: (coord.x - (board.width - 1) / 2) * board.cellSize * params.scale + params.pos.x,
+        y: (coord.y - (board.height - 1) / 2) * board.cellSize * params.scale + params.pos.y,
     };
 }
-function posToCoord(pos, board) {
+function posToCoord(pos, board, params) {
     return {
-        x: Math.round((pos.x - board.params.originX) / board.params.cellSize),
-        y: Math.round((pos.y - board.params.originY) / board.params.cellSize),
+        x: Math.round((pos.x - params.pos.x) / board.cellSize / params.scale + (board.width - 1) / 2),
+        y: Math.round((pos.y - params.pos.y) / board.cellSize / params.scale + (board.height - 1) / 2),
     };
 }
 function createMenu() {
@@ -308,7 +305,7 @@ function createMenu() {
                 top: originY + buttonMarginY * y - buttonHeight / 2,
                 bottom: originY + buttonMarginY * y + buttonHeight / 2,
                 text: (i + 1).toString(),
-                level,
+                board: createBoard(level),
             };
         }),
     };
@@ -316,11 +313,11 @@ function createMenu() {
 function createTitle() {
     return {
         type: "title",
-        board: createBoard([
+        board: shuffle(createBoard([
             ["blank", "blank"],
             ["blank", "blank"],
             ["knight", "blank"]
-        ], 320, 350, 300)
+        ])),
     };
 }
 function createManager(state) {
@@ -368,7 +365,7 @@ function updateManager(manager) {
 function clickTitle(pos, title, manager) {
     const title2 = {
         type: "title",
-        board: clickBoard(pos, title.board, manager.tick),
+        board: clickBoard(pos, title.board, titleDrawParams, manager.tick),
     };
     return {
         state: title2,
@@ -383,11 +380,11 @@ function clickMenu(pos, menu, manager) {
         button.top < pos.y &&
         pos.y <= button.bottom);
     if (clicked !== undefined)
-        return makeTransition(manager, createGame(clicked.level));
+        return makeTransition(manager, createGame(clicked.board));
     return manager;
 }
-function clickBoard(pos, board, timeStamp) {
-    const coord = posToCoord(pos, board);
+function clickBoard(pos, board, params, timeStamp) {
+    const coord = posToCoord(pos, board, params);
     if (!isReachableCoord(coord, board))
         return board;
     return move(board, coord, timeStamp) || board;
@@ -398,7 +395,7 @@ function clickGame(pos, game, manager) {
     }
     const game2 = {
         type: "game",
-        board: clickBoard(pos, game.board, manager.tick),
+        board: clickBoard(pos, game.board, gameDrawParams, manager.tick),
     };
     return {
         state: game2,
@@ -417,48 +414,48 @@ function click(pos, manager) {
         default: return manager;
     }
 }
-function drawGlid(screen, board, resources) {
+function drawGlid(screen, board, params, resources) {
     //グリッドを描画
-    for (let x = -1; x < board.params.width; x++) {
-        for (let y = -1; y < board.params.height; y++) {
+    for (let x = -1; x < board.width; x++) {
+        for (let y = -1; y < board.height; y++) {
             const id = [[[[0, 1], [2, 3]], [[4, 5], [6, 7]]], [[[8, 9], [10, 11]], [[12, 13], [14, 15]]]][getCell(board.cells, { x: x + 0, y: y + 0 }) === undefined ? 0 : 1][getCell(board.cells, { x: x + 1, y: y + 0 }) === undefined ? 0 : 1][getCell(board.cells, { x: x + 0, y: y + 1 }) === undefined ? 0 : 1][getCell(board.cells, { x: x + 1, y: y + 1 }) === undefined ? 0 : 1];
-            const pos = coordToPos({ x, y }, board);
+            const pos = coordToPos({ x, y }, board, params);
             if (id !== 0) {
-                screen.drawImage(resources.glids[id], pos.x, pos.y, board.params.cellSize, board.params.cellSize);
+                screen.drawImage(resources.glids[id], pos.x, pos.y, board.cellSize * params.scale, board.cellSize * params.scale);
             }
         }
     }
 }
-function drawReferencePieces(screen, board, resources) {
+function drawReferencePieces(screen, board, params, resources) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined && cell.reference !== "blank") {
-            const pos = coordToPos({ x, y }, board);
-            screen.drawImage(resources.referencePieces[cell.reference], pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+            const pos = coordToPos({ x, y }, board, params);
+            screen.drawImage(resources.referencePieces[cell.reference], pos.x - board.cellSize / 2 * params.scale, pos.y - board.cellSize / 2 * params.scale, board.cellSize * params.scale, board.cellSize * params.scale);
         }
     }));
 }
-function drawPieces(screen, board, resources, tick) {
+function drawPieces(screen, board, params, resources, tick) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
-            const pos = coordToPos({ x, y }, board);
+            const pos = coordToPos({ x, y }, board, params);
             screen.globalAlpha = Math.max(Math.min((tick - board.moveTimeStamp - 30) / 10, 1), 0);
             if (!board.completed && isReachableCoord({ x, y }, board)) {
-                screen.drawImage(resources.reachable, pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+                screen.drawImage(resources.reachable, pos.x - board.cellSize / 2 * params.scale, pos.y - board.cellSize / 2 * params.scale, board.cellSize * params.scale, board.cellSize * params.scale);
             }
             screen.globalAlpha = 1;
             if (cell.current !== "blank") {
                 if (x == board.prevPlayer.x && y == board.prevPlayer.y) {
-                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.moveTimeStamp);
-                    screen.drawImage(resources.pieces[cell.current], animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+                    const animatedPos = animation(coordToPos(board.player, board, params), coordToPos(board.prevPlayer, board, params), tick - board.moveTimeStamp);
+                    screen.drawImage(resources.pieces[cell.current], animatedPos.x - board.cellSize / 2 * params.scale, animatedPos.y - board.cellSize / 2 * params.scale, board.cellSize * params.scale, board.cellSize * params.scale);
                 }
                 else if (!(x == board.player.x && y == board.player.y)) {
-                    screen.drawImage(resources.pieces[cell.current], pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+                    screen.drawImage(resources.pieces[cell.current], pos.x - board.cellSize / 2 * params.scale, pos.y - board.cellSize / 2 * params.scale, board.cellSize * params.scale, board.cellSize * params.scale);
                 }
             }
         }
     }));
-    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.moveTimeStamp);
-    screen.drawImage(resources.pieces.player, animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+    const animatedPos = animation(coordToPos(board.prevPlayer, board, params), coordToPos(board.player, board, params), tick - board.moveTimeStamp);
+    screen.drawImage(resources.pieces.player, animatedPos.x - board.cellSize / 2 * params.scale, animatedPos.y - board.cellSize / 2 * params.scale, board.cellSize * params.scale, board.cellSize * params.scale);
     function animation(pos1, pos2, elapse) {
         const rate = Math.min(1, elapse / (animationLength + 10));
         const mix = rate * rate * (3 - 2 * rate);
@@ -468,18 +465,17 @@ function drawPieces(screen, board, resources, tick) {
         };
     }
 }
-function drawEffects(screen, board, resources, tick) {
+function drawEffects(screen, board, params, resources, tick) {
     board.effects.forEach(effect => {
         const phase = (tick - effect.timeStamp - animationLength - 10) / 45;
         if (phase < 0 || 1 < phase)
             return;
-        const pos = coordToPos(effect.coord, board);
+        const pos = coordToPos(effect.coord, board, params);
         const circlePhase = Math.min(1, phase * 2);
-        const circleRange = 0.5 * board.params.cellSize * (circlePhase) * (2 - circlePhase);
+        const circleRange = 0.5 * board.cellSize * (circlePhase) * (2 - circlePhase) * params.scale;
         const circleAlpha = Math.min(0.3, 1 - circlePhase);
-        const particleRange = 0.8 * board.params.cellSize * (1 - (1 - phase) * (1 - phase) * (1 - phase));
-        const particleLength = 0.2 * board.params.cellSize * (phase) * (1 - phase);
-        ;
+        const particleRange = 0.8 * board.cellSize * (1 - (1 - phase) * (1 - phase) * (1 - phase)) * params.scale;
+        const particleLength = 0.2 * board.cellSize * (phase) * (1 - phase) * params.scale;
         screen.fillStyle = "black";
         screen.globalAlpha = circleAlpha;
         screen.beginPath();
@@ -488,7 +484,7 @@ function drawEffects(screen, board, resources, tick) {
         screen.globalAlpha = 1;
         screen.strokeStyle = "black";
         screen.lineCap = "round";
-        screen.lineWidth = board.params.cellSize * 0.04;
+        screen.lineWidth = board.cellSize * 0.04 * params.scale;
         [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875].forEach(angle => {
             screen.beginPath();
             screen.moveTo(pos.x + particleRange * Math.cos(angle * Math.PI * 2), pos.y + particleRange * Math.sin(angle * Math.PI * 2));
@@ -497,14 +493,14 @@ function drawEffects(screen, board, resources, tick) {
         });
     });
 }
-function drawBoard(screen, board, resources, tick) {
-    drawGlid(screen, board, resources);
-    drawReferencePieces(screen, board, resources);
-    drawPieces(screen, board, resources, tick);
-    drawEffects(screen, board, resources, tick);
+function drawBoard(screen, board, params, resources, tick) {
+    drawGlid(screen, board, params, resources);
+    drawReferencePieces(screen, board, params, resources);
+    drawPieces(screen, board, params, resources, tick);
+    drawEffects(screen, board, params, resources, tick);
 }
 function drawGame(screen, game, resources, tick) {
-    drawBoard(screen, game.board, resources, tick);
+    drawBoard(screen, game.board, gameDrawParams, resources, tick);
     if (30 < tick - game.board.moveTimeStamp && game.board.completed) {
         fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.moveTimeStamp - 30) / 30)));
         screen.drawImage(resources.completed, 80, 0, 480, 480);
@@ -514,11 +510,20 @@ function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
     menu.buttons.forEach(button => {
         screen.strokeRect(button.left, button.top, button.right - button.left, button.bottom - button.top);
+        screen.textAlign = "center";
         screen.fillText(button.text, button.left, button.bottom);
     });
 }
+const titleDrawParams = {
+    pos: { x: 320, y: 300 },
+    scale: 300,
+};
+const gameDrawParams = {
+    pos: { x: 320, y: 240 },
+    scale: 440,
+};
 function drawTitle(screen, title, resources, tick) {
-    drawBoard(screen, title.board, resources, tick);
+    drawBoard(screen, title.board, titleDrawParams, resources, tick);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
 function drawState(screen, state, resources, tick) {
