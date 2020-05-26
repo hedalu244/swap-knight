@@ -287,10 +287,10 @@ function createMenu() {
             [undefined, "blank", "knight", "rook", "blank", undefined],
         ],
         [
-            ["pawn", "rook", "bishop", "pawn",],
-            ["bishop", "knight", "blank", "rook",],
-            ["rook", "blank", "blank", "bishop",],
-            ["pawn", "bishop", "rook", "pawn",],
+            [undefined, "rook", "knight", undefined],
+            ["pawn", "blank", "blank", "bishop"],
+            ["bishop", "blank", "blank", "pawn"],
+            [undefined, "knight", "rook", undefined],
         ],
     ];
     const buttonSize = 100;
