@@ -479,7 +479,7 @@ function clickMenu(pos: Pos, menu: Menu, manager: Manager): Manager {
         button.pos.x - button.size / 2 < pos.x &&
         pos.x <= button.pos.x + button.size / 2 &&
         button.pos.y - button.size / 2 < pos.y &&
-        pos.y <= button.pos.y - button.size / 2
+        pos.y <= button.pos.y + button.size / 2
     );
     if (clicked !== undefined) return makeTransition(manager, createGame(clicked.board));
     return manager;
@@ -647,15 +647,22 @@ function drawEffects(screen: Screen2D, board: Board, params: BoardDrawParams, re
     });
 }
 
-function drawBoard(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number) {
+function drawBoard(screen: Screen2D, board: Board, params: BoardDrawParams, resources: Resources, tick: number, thumbnail: boolean) {
     drawGlid(screen, board, params, resources);
-    drawReferencePieces(screen, board, params, resources);
-    drawPieces(screen, board, params, resources, tick);
-    drawEffects(screen, board, params, resources, tick);
+    if(thumbnail) {
+        drawReferencePieces(screen, board, params, resources);
+    }
+    else {
+        screen.globalAlpha = 0.1;
+        drawReferencePieces(screen, board, params, resources);
+        drawPieces(screen, board, params, resources, tick);
+        drawEffects(screen, board, params, resources, tick);
+        screen.globalAlpha = 1;
+    }
 }
 
 function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: number) {
-    drawBoard(screen, game.board, gameDrawParams, resources, tick);
+    drawBoard(screen, game.board, gameDrawParams, resources, tick, false);
 
     if (30 < tick - game.board.moveTimeStamp && game.board.completed) {
         fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.moveTimeStamp - 30) / 30)));
@@ -667,7 +674,7 @@ function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
     screen.fillStyle = "black";
     menu.buttons.forEach(button => {
         screen.strokeRect(button.pos.x - button.size / 2, button.pos.y - button.size / 2, button.size, button.size);
-        drawBoard(screen, button.board, { pos: button.pos, scale: button.size - 10 }, resources, 0);
+        drawBoard(screen, button.board, { pos: button.pos, scale: button.size - 10 }, resources, 0, true);
     });
 }
 
@@ -682,7 +689,7 @@ const gameDrawParams: BoardDrawParams = {
 
 
 function drawTitle(screen: Screen2D, title: Title, resources: Resources, tick: number) {
-    drawBoard(screen, title.board, titleDrawParams, resources, tick);
+    drawBoard(screen, title.board, titleDrawParams, resources, tick, false);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
 

@@ -55,19 +55,19 @@
      id="layer1"
      transform="translate(0,-270.54166)">
     <path
-       style="fill:#dddddd;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        d="m 28,352.54166 h 44 l 8,8 v 6 H 20 v -6 z"
        id="rect1368-9-7"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
     <path
-       style="fill:#dddddd;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        d="m 40,322.54166 -8,26 h 36 l -8,-26 z"
        id="path1372-4-0-5"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccc" />
     <path
-       style="fill:#dddddd;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        d="M 50 4 A 4 4 0 0 0 46 8 A 4 4 0 0 0 46.496094 9.921875 C 41.381539 14.262239 34 25.064709 34 32 C 34 35.505732 36.456018 39.001648 40.251953 41.310547 L 34 46 L 34 48 L 66 48 L 66 46 L 59.748047 41.310547 C 63.543982 39.001648 66 35.505732 66 32 C 66 27.469809 62.848291 21.29705 59.238281 16.345703 C 58.360087 19.600723 56.869925 21.615719 55.5625 23.25 C 53.5625 25.75 52 27.38095 52 34 A 2.0002 2.0002 0 1 1 48 34 C 48 26.61904 50.4375 23.251953 52.4375 20.751953 C 54.183814 18.56906 55.59548 17.044334 55.925781 12.287109 C 55.090781 11.382087 54.271666 10.5739 53.505859 9.9238281 A 4 4 0 0 0 54 8 A 4 4 0 0 0 50 4 z "
        transform="translate(0,270.54166)"
        id="path1372-7-6" />
