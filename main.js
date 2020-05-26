@@ -224,16 +224,46 @@ function posToCoord(pos, board) {
     };
 }
 function createMenu() {
+    const levels = [
+        [
+            ["knight", "blank", "blank", "blank"],
+            ["blank", "blank", "blank", "blank"],
+            ["blank", "blank", "blank", "blank"],
+            ["blank", "blank", "blank", "knight"],
+        ],
+        [
+            ["knight", "blank", "blank", "pawn"],
+            ["blank", "blank", "blank", "blank"],
+            ["blank", "blank", "blank", "blank"],
+            ["pawn", "blank", "blank", "knight"],
+        ],
+        [
+            ["pawn", "blank", "blank", "pawn"],
+            ["blank", "knight", "knight", "blank"],
+            ["blank", "knight", "knight", "blank"],
+            ["pawn", "blank", "blank", "pawn"],
+        ],
+    ];
+    const buttonWidth = 60;
+    const buttonHeight = 40;
+    const buttonMarginX = 70;
+    const buttonMarginY = 50;
+    const originX = 320;
+    const originY = 40;
     return {
         type: "menu",
-        levels: [
-            [
-                ["knight", "blank", "blank", "blank"],
-                ["blank", "blank", "blank", "blank"],
-                ["blank", "blank", "blank", "blank"],
-                ["blank", "blank", "blank", "knight"],
-            ]
-        ],
+        buttons: levels.map((level, i) => {
+            const x = i % 5 - 2;
+            const y = Math.floor(i / 5);
+            return {
+                left: originX + buttonMarginX * x - buttonWidth / 2,
+                right: originX + buttonMarginX * x + buttonWidth / 2,
+                top: originY + buttonMarginY * y - buttonHeight / 2,
+                bottom: originY + buttonMarginY * y + buttonHeight / 2,
+                text: (i + 1).toString(),
+                level,
+            };
+        }),
     };
 }
 function createTitle() {
@@ -301,7 +331,13 @@ function clickTitle(pos, title, manager) {
     };
 }
 function clickMenu(pos, menu, manager) {
-    return makeTransition(manager, createGame(menu.levels[0]));
+    const clicked = menu.buttons.find(button => button.left < pos.x &&
+        pos.x <= button.right &&
+        button.top < pos.y &&
+        pos.y <= button.bottom);
+    if (clicked !== undefined)
+        return makeTransition(manager, createGame(clicked.level));
+    return manager;
 }
 function clickBoard(pos, board, timeStamp) {
     const coord = posToCoord(pos, board);
@@ -429,7 +465,10 @@ function drawGame(screen, game, resources, tick) {
 }
 function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
-    screen.fillText("menu", 100, 100);
+    menu.buttons.forEach(button => {
+        screen.strokeRect(button.left, button.top, button.right - button.left, button.bottom - button.top);
+        screen.fillText(button.text, button.left, button.bottom);
+    });
 }
 function drawTitle(screen, title, resources, tick) {
     drawBoard(screen, title.board, resources, tick);
@@ -491,8 +530,9 @@ window.onload = () => {
     const title = createTitle();
     const resources = loadResources();
     let manager = createManager(title);
+    const rect = canvas.getBoundingClientRect();
     canvas.addEventListener("click", (event) => {
-        manager = click({ x: event.offsetX, y: event.offsetY }, manager);
+        manager = click({ x: event.clientX - rect.left, y: event.clientY - rect.top }, manager);
     });
     loop(screen);
     function loop(screen) {
