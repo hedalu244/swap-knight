@@ -1,5 +1,5 @@
 "use strict";
-const animationLength = 30;
+const animationLength = 15;
 //ナイトが動ける方向(時計回り)
 const knightMove = [
     { x: 1, y: 2 },
@@ -14,11 +14,7 @@ const knightMove = [
 function flat(array) {
     return array.reduce((prev, cur) => [...prev, ...cur], []);
 }
-function createBoard(level) {
-    const maxBoardWidth = 300;
-    const maxBoardHeight = 300;
-    const centerPosX = 200;
-    const centerPosY = 200;
+function createBoard(level, centerPosX = 320, centerPosY = 240, maxBoardWidth = 600, maxBoardHeight = 440) {
     const cells = level.map(row => row.map(piece => piece !== undefined ? { correct: piece, current: piece } : undefined));
     const knightSearch = flat(level.map((row, x) => row.map((piece, y) => ({ piece, coord: { x, y } })))).find(x => x.piece === "knight");
     if (knightSearch === undefined)
@@ -138,7 +134,9 @@ function loadResources() {
     };
     return {
         _progress: progress,
+        title: loadImage("resources/images/title.svg"),
         reachable: loadImage("resources/images/reachable.svg"),
+        completed: loadImage("resources/images/completed.svg"),
         pieces: {
             player: loadImage("resources/images/player.svg"),
             pawn: loadImage("resources/images/pawn.svg"),
@@ -196,13 +194,10 @@ function loadResources() {
         return audio;
     }
 }
-function setMoveElapse(board, moveElapse) {
-    return Object.assign(Object.assign({}, board), { moveElapse: moveElapse });
-}
 function createGame(level) {
     return {
         type: "game",
-        board: setMoveElapse(createBoard(level), animationLength),
+        board: Object.assign(Object.assign({}, createBoard(level)), { moveElapse: 10000 }),
     };
 }
 function coordToPos(coord, board) {
@@ -233,13 +228,13 @@ function createMenu() {
 function createTitle() {
     return {
         type: "title",
-        board: setMoveElapse(createBoard([
+        board: Object.assign(Object.assign({}, createBoard([
             ["blank", "blank"],
             ["blank", "blank"],
             ["blank", "blank"],
             ["knight", "blank"],
-            ["blank", "blank"],
-        ]), animationLength),
+            ["blank", "blank"]
+        ], 320, 300, 500)), { moveElapse: 10000 }),
     };
 }
 function createManager(state) {
@@ -343,18 +338,26 @@ function drawPieces(screen, board, resources) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, board);
+            screen.globalAlpha = Math.max(Math.min((board.moveElapse - 30) / 10, 1), 0);
             if (!board.completed && isReachableCoord({ x, y }, board)) {
                 screen.drawImage(resources.reachable, pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
             }
-            if (!(x == board.player.x && y == board.player.y) && cell.current !== "blank") {
-                screen.drawImage(resources.pieces[cell.current], pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+            screen.globalAlpha = 1;
+            if (cell.current !== "blank") {
+                if (x == board.prevPlayer.x && y == board.prevPlayer.y) {
+                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), board.moveElapse);
+                    screen.drawImage(resources.pieces[cell.current], animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+                }
+                else if (!(x == board.player.x && y == board.player.y)) {
+                    screen.drawImage(resources.pieces[cell.current], pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
+                }
             }
         }
     }));
     const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), board.moveElapse);
     screen.drawImage(resources.pieces.player, animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
     function animation(pos1, pos2, elapse) {
-        const rate = Math.min(1, elapse / animationLength);
+        const rate = Math.min(1, elapse / (animationLength + 10));
         const mix = rate * rate * (3 - 2 * rate);
         return {
             x: pos1.x + (pos2.x - pos1.x) * mix,
@@ -370,18 +373,18 @@ function drawBoard(screen, board, resources) {
 }
 function drawGame(screen, game, resources) {
     drawBoard(screen, game.board, resources);
-    screen.fillStyle = "black";
-    if (30 < game.board.moveElapse && game.board.completed)
-        screen.fillText("completed", 100, 100);
+    if (30 < game.board.moveElapse && game.board.completed) {
+        fade(screen, Math.max(0, Math.min(0.5, (game.board.moveElapse - 30) / 30)));
+        screen.drawImage(resources.completed, 80, 0, 480, 480);
+    }
 }
 function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
     screen.fillText("menu", 100, 100);
 }
 function drawTitle(screen, title, resources) {
-    screen.fillStyle = "black";
     drawBoard(screen, title.board, resources);
-    screen.fillText("title", 100, 100);
+    screen.drawImage(resources.title, 80, 0, 480, 480);
 }
 function drawState(screen, state, resources) {
     switch (state.type) {
