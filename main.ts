@@ -13,13 +13,18 @@ interface Direction {
     readonly x: number;
     readonly y: number;
 }
+interface Effect {
+    readonly coord: Coord;
+    readonly timeStamp: number;
+}
 
 interface Board {
-    readonly cells: Cell[][];
+    readonly cells: readonly (readonly Cell[])[];
+    readonly effects: Effect[];
     readonly player: Coord;
     readonly prevPlayer: Coord,
     readonly completed: boolean;
-    readonly timeStamp: number,
+    readonly moveTimeStamp: number,
     readonly params: {
         readonly cellSize: number,
         readonly originX: number,
@@ -60,9 +65,10 @@ function createBoard(level: Level, centerPosX = 320, centerPosY = 240, maxBoardW
 
     return shuffle({
         cells,
+        effects: [],
         player: knightSearch.coord,
         prevPlayer: knightSearch.coord,
-        timeStamp: 0,
+        moveTimeStamp: 0,
         completed: true,
         params: {
             cellSize,
@@ -74,7 +80,7 @@ function createBoard(level: Level, centerPosX = 320, centerPosY = 240, maxBoardW
     });
 }
 
-function setCell(cells: Cell[][], coord: Coord, piece: Piece): Cell[][] {
+function setCell(cells: readonly (readonly Cell[])[], coord: Coord, piece: Piece): Cell[][] {
     return cells.map((row, x) =>
         row.map((cell, y) =>
             cell !== undefined && x == coord.x && y == coord.y
@@ -82,7 +88,7 @@ function setCell(cells: Cell[][], coord: Coord, piece: Piece): Cell[][] {
 }
 
 //範囲外ならundefined
-function getCell(cells: Cell[][], coord: Coord): Cell {
+function getCell(cells: readonly (readonly Cell[])[], coord: Coord): Cell {
     const row = cells[coord.x];
     if (row === undefined) return undefined;
     return row[coord.y];
@@ -102,7 +108,7 @@ function isCorrect(cell: Cell): boolean {
     return cell.correct === cell.current;
 }
 //クリアしたか？(全てのマスが初期配置に戻されているか)
-function isCompleted(cells: Cell[][]): boolean {
+function isCompleted(cells: readonly (readonly Cell[])[]): boolean {
     return cells.every(row => row.every(cell => isCorrect(cell)));
 }
 
@@ -112,14 +118,24 @@ function move(board: Board, to: Coord, timeStamp: number): Board | null {
     const toCell = getCell(board.cells, to);
     if (toCell === undefined) return null;
 
-    const cells = setCell(setCell(board.cells, board.player, toCell.current), to, "knight");
+    const fromCell = getCell(board.cells, board.player);
+    if (fromCell === undefined) return null;
 
+    const cells = setCell(setCell(board.cells, board.player, toCell.current), to, fromCell.current);
+
+    const additionalEffects: Effect[] = [
+        ...(fromCell.correct!=="blank" && isCorrect({ current: toCell.current, correct: fromCell.correct })
+         ? [{ coord: board.player, timeStamp }] : []),
+        ...(toCell.correct!=="blank" && isCorrect({ current: fromCell.current, correct: toCell.correct })
+         ? [{ coord: to, timeStamp }] : []),
+    ];
     return {
         player: to,
+        effects: [...board.effects, ...additionalEffects],
         cells: cells,
         completed: isCompleted(cells),
         prevPlayer: board.player,
-        timeStamp: timeStamp,
+        moveTimeStamp: timeStamp,
         params: board.params,
     };
 }
@@ -306,9 +322,9 @@ function createTitle(): Title {
     return {
         type: "title",
         board: createBoard([
-                ["blank", "blank"],
-                ["blank", "blank"],
-                ["knight", "blank"]], 320, 350, 300)
+            ["blank", "blank"],
+            ["blank", "blank"],
+            ["knight", "blank"]], 320, 350, 300)
     };
 }
 
@@ -356,7 +372,7 @@ function updateManager(manager: Manager): Manager {
             tick: manager.tick + 1,
         };
     }
-    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.timeStamp)
+    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.moveTimeStamp)
         manager = makeTransition(manager, createMenu());
     return {
         state: manager.state,
@@ -456,7 +472,7 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources, tick: 
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, board);
 
-            screen.globalAlpha = Math.max(Math.min((tick - board.timeStamp - 30) / 10, 1), 0);
+            screen.globalAlpha = Math.max(Math.min((tick - board.moveTimeStamp - 30) / 10, 1), 0);
             if (!board.completed && isReachableCoord({ x, y }, board)) {
                 screen.drawImage(resources.reachable,
                     pos.x - board.params.cellSize / 2,
@@ -468,7 +484,7 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources, tick: 
 
             if (cell.current !== "blank") {
                 if (x == board.prevPlayer.x && y == board.prevPlayer.y) {
-                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.timeStamp);
+                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.moveTimeStamp);
                     screen.drawImage(resources.pieces[cell.current],
                         animatedPos.x - board.params.cellSize / 2,
                         animatedPos.y - board.params.cellSize / 2,
@@ -486,7 +502,7 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources, tick: 
         }
     }));
 
-    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.timeStamp);
+    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.moveTimeStamp);
     screen.drawImage(resources.pieces.player,
         animatedPos.x - board.params.cellSize / 2,
         animatedPos.y - board.params.cellSize / 2,
@@ -503,17 +519,30 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources, tick: 
     }
 }
 
+function drawEffects(screen: Screen2D, board: Board, resources: Resources, tick: number) {
+    board.effects.forEach(effect=>{
+        const elapse = tick - effect.timeStamp - animationLength - 10;
+        if(elapse < 0 || 30 < elapse) return;
+        const pos = coordToPos(effect.coord, board);
+
+        screen.fillStyle = "red";
+        screen.fillRect(pos.x - 20, pos.y - 20, 40, 40);
+    })
+
+}
+
 function drawBoard(screen: Screen2D, board: Board, resources: Resources, tick: number) {
     drawGlid(screen, board, resources);
     drawCorrectPieces(screen, board, resources);
     drawPieces(screen, board, resources, tick);
+    drawEffects(screen, board, resources, tick);
 }
 
 function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: number) {
     drawBoard(screen, game.board, resources, tick);
 
-    if (30 < tick - game.board.timeStamp && game.board.completed) {
-        fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.timeStamp - 30) / 30)));
+    if (30 < tick - game.board.moveTimeStamp && game.board.completed) {
+        fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.moveTimeStamp - 30) / 30)));
         screen.drawImage(resources.completed, 80, 0, 480, 480);
     }
 }

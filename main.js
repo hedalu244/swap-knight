@@ -26,9 +26,10 @@ function createBoard(level, centerPosX = 320, centerPosY = 240, maxBoardWidth = 
     const originY = centerPosY - cellSize * (height - 1) / 2;
     return shuffle({
         cells,
+        effects: [],
         player: knightSearch.coord,
         prevPlayer: knightSearch.coord,
-        timeStamp: 0,
+        moveTimeStamp: 0,
         completed: true,
         params: {
             cellSize,
@@ -73,13 +74,23 @@ function move(board, to, timeStamp) {
     const toCell = getCell(board.cells, to);
     if (toCell === undefined)
         return null;
-    const cells = setCell(setCell(board.cells, board.player, toCell.current), to, "knight");
+    const fromCell = getCell(board.cells, board.player);
+    if (fromCell === undefined)
+        return null;
+    const cells = setCell(setCell(board.cells, board.player, toCell.current), to, fromCell.current);
+    const additionalEffects = [
+        ...(fromCell.correct !== "blank" && isCorrect({ current: toCell.current, correct: fromCell.correct })
+            ? [{ coord: board.player, timeStamp }] : []),
+        ...(toCell.correct !== "blank" && isCorrect({ current: fromCell.current, correct: toCell.correct })
+            ? [{ coord: to, timeStamp }] : []),
+    ];
     return {
         player: to,
+        effects: [...board.effects, ...additionalEffects],
         cells: cells,
         completed: isCompleted(cells),
         prevPlayer: board.player,
-        timeStamp: timeStamp,
+        moveTimeStamp: timeStamp,
         params: board.params,
     };
 }
@@ -268,7 +279,7 @@ function updateManager(manager) {
             tick: manager.tick + 1,
         };
     }
-    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.timeStamp)
+    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.moveTimeStamp)
         manager = makeTransition(manager, createMenu());
     return {
         state: manager.state,
@@ -347,14 +358,14 @@ function drawPieces(screen, board, resources, tick) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, board);
-            screen.globalAlpha = Math.max(Math.min((tick - board.timeStamp - 30) / 10, 1), 0);
+            screen.globalAlpha = Math.max(Math.min((tick - board.moveTimeStamp - 30) / 10, 1), 0);
             if (!board.completed && isReachableCoord({ x, y }, board)) {
                 screen.drawImage(resources.reachable, pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
             }
             screen.globalAlpha = 1;
             if (cell.current !== "blank") {
                 if (x == board.prevPlayer.x && y == board.prevPlayer.y) {
-                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.timeStamp);
+                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.moveTimeStamp);
                     screen.drawImage(resources.pieces[cell.current], animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
                 }
                 else if (!(x == board.player.x && y == board.player.y)) {
@@ -363,7 +374,7 @@ function drawPieces(screen, board, resources, tick) {
             }
         }
     }));
-    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.timeStamp);
+    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.moveTimeStamp);
     screen.drawImage(resources.pieces.player, animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
     function animation(pos1, pos2, elapse) {
         const rate = Math.min(1, elapse / (animationLength + 10));
@@ -374,15 +385,26 @@ function drawPieces(screen, board, resources, tick) {
         };
     }
 }
+function drawEffects(screen, board, resources, tick) {
+    board.effects.forEach(effect => {
+        const elapse = tick - effect.timeStamp - animationLength - 10;
+        if (elapse < 0 || 30 < elapse)
+            return;
+        const pos = coordToPos(effect.coord, board);
+        screen.fillStyle = "red";
+        screen.fillRect(pos.x - 20, pos.y - 20, 40, 40);
+    });
+}
 function drawBoard(screen, board, resources, tick) {
     drawGlid(screen, board, resources);
     drawCorrectPieces(screen, board, resources);
     drawPieces(screen, board, resources, tick);
+    drawEffects(screen, board, resources, tick);
 }
 function drawGame(screen, game, resources, tick) {
     drawBoard(screen, game.board, resources, tick);
-    if (30 < tick - game.board.timeStamp && game.board.completed) {
-        fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.timeStamp - 30) / 30)));
+    if (30 < tick - game.board.moveTimeStamp && game.board.completed) {
+        fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.moveTimeStamp - 30) / 30)));
         screen.drawImage(resources.completed, 80, 0, 480, 480);
     }
 }
