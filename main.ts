@@ -796,6 +796,12 @@ window.onload = () => {
     canvas.addEventListener("click", (event) => {
         manager = click({ x: event.clientX - rect.left, y: event.clientY - rect.top }, manager);
     });
+    canvas.addEventListener("touchstart", (event) => {
+        event.preventDefault();
+        Array.from(event.changedTouches).forEach(touch => {
+            manager = click({ x: touch.clientX - rect.left, y: touch.clientY - rect.top }, manager);
+        });
+    });
     loop(screen);
 
     function loop(screen: Screen2D) {
