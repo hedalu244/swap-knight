@@ -19,7 +19,7 @@ interface Board {
     readonly player: Coord;
     readonly prevPlayer: Coord,
     readonly completed: boolean;
-    moveElapse: number,
+    readonly timeStamp: number,
     readonly params: {
         readonly cellSize: number,
         readonly originX: number,
@@ -62,7 +62,7 @@ function createBoard(level: Level, centerPosX = 320, centerPosY = 240, maxBoardW
         cells,
         player: knightSearch.coord,
         prevPlayer: knightSearch.coord,
-        moveElapse: 0,
+        timeStamp: 0,
         completed: true,
         params: {
             cellSize,
@@ -107,7 +107,7 @@ function isCompleted(cells: Cell[][]): boolean {
 }
 
 //移動後のBoardを返す
-function move(board: Board, to: Coord): Board | null {
+function move(board: Board, to: Coord, timeStamp: number): Board | null {
     //移動先座標が範囲外だったら移動不可
     const toCell = getCell(board.cells, to);
     if (toCell === undefined) return null;
@@ -119,7 +119,7 @@ function move(board: Board, to: Coord): Board | null {
         cells: cells,
         completed: isCompleted(cells),
         prevPlayer: board.player,
-        moveElapse: 0,
+        timeStamp: timeStamp,
         params: board.params,
     };
 }
@@ -146,7 +146,7 @@ function shuffle(board: Board, count: number = 0, prevBoard: Board = board): Boa
             if (coord.x === prevBoard.player.x && coord.y === prevBoard.player.y)
                 return [];
 
-            const board2 = move(board, coord);
+            const board2 = move(board, coord, -10000);
             // 移動不能マスは抜く
             if (board2 === null) return [];
             //既に揃っているマスには積極的に進める
@@ -260,10 +260,7 @@ interface Game {
 function createGame(level: Level): Game {
     return {
         type: "game",
-        board: {
-            ...createBoard(level),
-            moveElapse: 10000,
-        },
+        board: createBoard(level),
     };
 }
 
@@ -308,15 +305,10 @@ interface Title {
 function createTitle(): Title {
     return {
         type: "title",
-        board: {
-            ...createBoard([
+        board: createBoard([
                 ["blank", "blank"],
                 ["blank", "blank"],
-                ["blank", "blank"],
-                ["knight", "blank"],
-                ["blank", "blank"]], 320, 300, 500),
-            moveElapse: 10000,
-        },
+                ["knight", "blank"]], 320, 350, 300)
     };
 }
 
@@ -325,14 +317,16 @@ type State = Game | Menu | Title;
 interface Manager {
     readonly state: State;
     readonly nextState: State | null;
-    readonly fadeCount: number;
+    readonly transitionTimeStamp: number;
+    readonly tick: number;
 }
 
 function createManager(state: State): Manager {
     return {
         state: state,
         nextState: null,
-        fadeCount: 0,
+        transitionTimeStamp: 0,
+        tick: 0,
     };
 }
 
@@ -340,39 +334,48 @@ function makeTransition(manager: Manager, nextState: State): Manager {
     return {
         state: manager.state,
         nextState: nextState,
-        fadeCount: 0,
+        transitionTimeStamp: manager.tick,
+        tick: manager.tick,
     };
 }
 
 function updateManager(manager: Manager): Manager {
     if (manager.nextState !== null) {
-        if (60 <= manager.fadeCount) {
+        if (60 <= manager.tick - manager.transitionTimeStamp) {
             return {
                 state: manager.nextState,
                 nextState: null,
-                fadeCount: 0,
+                transitionTimeStamp: manager.transitionTimeStamp,
+                tick: manager.tick + 1,
             };
         }
         return {
             state: manager.state,
             nextState: manager.nextState,
-            fadeCount: manager.fadeCount + 1,
+            transitionTimeStamp: manager.transitionTimeStamp,
+            tick: manager.tick + 1,
         };
     }
-    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.state.board.moveElapse)
-        return makeTransition(manager, createMenu());
-    return manager;
+    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.timeStamp)
+        manager = makeTransition(manager, createMenu());
+    return {
+        state: manager.state,
+        nextState: manager.nextState,
+        transitionTimeStamp: manager.transitionTimeStamp,
+        tick: manager.tick + 1,
+    };
 }
 
 function clickTitle(pos: Pos, title: Title, manager: Manager): Manager {
     const title2 = {
         type: "title" as const,
-        board: clickBoard(pos, title.board),
+        board: clickBoard(pos, title.board, manager.tick),
     };
     return {
         state: title2,
         nextState: manager.nextState,
-        fadeCount: manager.fadeCount,
+        transitionTimeStamp: manager.transitionTimeStamp,
+        tick: manager.tick
     };
 }
 
@@ -380,11 +383,11 @@ function clickMenu(pos: Pos, menu: Menu, manager: Manager): Manager {
     return makeTransition(manager, createGame(menu.levels[0]));
 }
 
-function clickBoard(pos: Pos, board: Board): Board {
+function clickBoard(pos: Pos, board: Board, timeStamp: number): Board {
     const coord = posToCoord(pos, board);
     if (!isReachableCoord(coord, board)) return board;
 
-    return move(board, coord) || board;
+    return move(board, coord, timeStamp) || board;
 }
 
 function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
@@ -394,13 +397,14 @@ function clickGame(pos: Pos, game: Game, manager: Manager): Manager {
 
     const game2 = {
         type: "game" as const,
-        board: clickBoard(pos, game.board),
+        board: clickBoard(pos, game.board, manager.tick),
     };
 
     return {
         state: game2,
         nextState: manager.nextState,
-        fadeCount: manager.fadeCount,
+        transitionTimeStamp: manager.transitionTimeStamp,
+        tick: manager.tick,
     };
 }
 
@@ -447,12 +451,12 @@ function drawCorrectPieces(screen: Screen2D, board: Board, resources: Resources)
     }));
 }
 
-function drawPieces(screen: Screen2D, board: Board, resources: Resources) {
+function drawPieces(screen: Screen2D, board: Board, resources: Resources, tick: number) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, board);
 
-            screen.globalAlpha = Math.max(Math.min((board.moveElapse - 30) / 10, 1), 0);
+            screen.globalAlpha = Math.max(Math.min((tick - board.timeStamp - 30) / 10, 1), 0);
             if (!board.completed && isReachableCoord({ x, y }, board)) {
                 screen.drawImage(resources.reachable,
                     pos.x - board.params.cellSize / 2,
@@ -464,7 +468,7 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources) {
 
             if (cell.current !== "blank") {
                 if (x == board.prevPlayer.x && y == board.prevPlayer.y) {
-                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), board.moveElapse);
+                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.timeStamp);
                     screen.drawImage(resources.pieces[cell.current],
                         animatedPos.x - board.params.cellSize / 2,
                         animatedPos.y - board.params.cellSize / 2,
@@ -482,7 +486,7 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources) {
         }
     }));
 
-    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), board.moveElapse);
+    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.timeStamp);
     screen.drawImage(resources.pieces.player,
         animatedPos.x - board.params.cellSize / 2,
         animatedPos.y - board.params.cellSize / 2,
@@ -499,19 +503,17 @@ function drawPieces(screen: Screen2D, board: Board, resources: Resources) {
     }
 }
 
-function drawBoard(screen: Screen2D, board: Board, resources: Resources) {
-    board.moveElapse++;
-
+function drawBoard(screen: Screen2D, board: Board, resources: Resources, tick: number) {
     drawGlid(screen, board, resources);
     drawCorrectPieces(screen, board, resources);
-    drawPieces(screen, board, resources);
+    drawPieces(screen, board, resources, tick);
 }
 
-function drawGame(screen: Screen2D, game: Game, resources: Resources) {
-    drawBoard(screen, game.board, resources);
+function drawGame(screen: Screen2D, game: Game, resources: Resources, tick: number) {
+    drawBoard(screen, game.board, resources, tick);
 
-    if (30 < game.board.moveElapse && game.board.completed) {
-        fade(screen, Math.max(0, Math.min(0.5, (game.board.moveElapse - 30) / 30)));
+    if (30 < tick - game.board.timeStamp && game.board.completed) {
+        fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.timeStamp - 30) / 30)));
         screen.drawImage(resources.completed, 80, 0, 480, 480);
     }
 }
@@ -521,16 +523,16 @@ function drawMenu(screen: Screen2D, menu: Menu, resources: Resources) {
     screen.fillText("menu", 100, 100);
 }
 
-function drawTitle(screen: Screen2D, title: Title, resources: Resources) {
-    drawBoard(screen, title.board, resources);
+function drawTitle(screen: Screen2D, title: Title, resources: Resources, tick: number) {
+    drawBoard(screen, title.board, resources, tick);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
 
-function drawState(screen: Screen2D, state: State, resources: Resources) {
+function drawState(screen: Screen2D, state: State, resources: Resources, tick: number) {
     switch (state.type) {
         case "menu": drawMenu(screen, state, resources); break;
-        case "game": drawGame(screen, state, resources); break;
-        case "title": drawTitle(screen, state, resources); break;
+        case "game": drawGame(screen, state, resources, tick); break;
+        case "title": drawTitle(screen, state, resources, tick); break;
     }
 }
 
@@ -549,17 +551,17 @@ function draw(screen: Screen2D, manager: Manager, resources: Resources) {
     screen.clearRect(0, 0, screen.canvas.width, screen.canvas.height);
 
     if (manager.nextState !== null) {
-        if (manager.fadeCount < 30) {
-            drawState(screen, manager.state, resources);
-            fade(screen, manager.fadeCount / fadeoutLength);
+        if (manager.tick - manager.transitionTimeStamp < 30) {
+            drawState(screen, manager.state, resources, manager.tick);
+            fade(screen, (manager.tick - manager.transitionTimeStamp) / fadeoutLength);
         }
-        if (30 <= manager.fadeCount) {
-            drawState(screen, manager.nextState, resources);
-            fade(screen, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
+        if (30 <= manager.tick - manager.transitionTimeStamp) {
+            drawState(screen, manager.nextState, resources, manager.tick);
+            fade(screen, (fadeoutLength + fadeinLength - (manager.tick - manager.transitionTimeStamp)) / fadeinLength);
         }
     }
     else {
-        drawState(screen, manager.state, resources);
+        drawState(screen, manager.state, resources, manager.tick);
     }
 }
 

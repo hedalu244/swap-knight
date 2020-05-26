@@ -28,7 +28,7 @@ function createBoard(level, centerPosX = 320, centerPosY = 240, maxBoardWidth = 
         cells,
         player: knightSearch.coord,
         prevPlayer: knightSearch.coord,
-        moveElapse: 0,
+        timeStamp: 0,
         completed: true,
         params: {
             cellSize,
@@ -68,7 +68,7 @@ function isCompleted(cells) {
     return cells.every(row => row.every(cell => isCorrect(cell)));
 }
 //移動後のBoardを返す
-function move(board, to) {
+function move(board, to, timeStamp) {
     //移動先座標が範囲外だったら移動不可
     const toCell = getCell(board.cells, to);
     if (toCell === undefined)
@@ -79,7 +79,7 @@ function move(board, to) {
         cells: cells,
         completed: isCompleted(cells),
         prevPlayer: board.player,
-        moveElapse: 0,
+        timeStamp: timeStamp,
         params: board.params,
     };
 }
@@ -102,7 +102,7 @@ function shuffle(board, count = 0, prevBoard = board) {
         //戻るような手は選ばない
         if (coord.x === prevBoard.player.x && coord.y === prevBoard.player.y)
             return [];
-        const board2 = move(board, coord);
+        const board2 = move(board, coord, -10000);
         // 移動不能マスは抜く
         if (board2 === null)
             return [];
@@ -197,7 +197,7 @@ function loadResources() {
 function createGame(level) {
     return {
         type: "game",
-        board: Object.assign(Object.assign({}, createBoard(level)), { moveElapse: 10000 }),
+        board: createBoard(level),
     };
 }
 function coordToPos(coord, board) {
@@ -228,67 +228,75 @@ function createMenu() {
 function createTitle() {
     return {
         type: "title",
-        board: Object.assign(Object.assign({}, createBoard([
+        board: createBoard([
             ["blank", "blank"],
             ["blank", "blank"],
-            ["blank", "blank"],
-            ["knight", "blank"],
-            ["blank", "blank"]
-        ], 320, 300, 500)), { moveElapse: 10000 }),
+            ["knight", "blank"]
+        ], 320, 350, 300)
     };
 }
 function createManager(state) {
     return {
         state: state,
         nextState: null,
-        fadeCount: 0,
+        transitionTimeStamp: 0,
+        tick: 0,
     };
 }
 function makeTransition(manager, nextState) {
     return {
         state: manager.state,
         nextState: nextState,
-        fadeCount: 0,
+        transitionTimeStamp: manager.tick,
+        tick: manager.tick,
     };
 }
 function updateManager(manager) {
     if (manager.nextState !== null) {
-        if (60 <= manager.fadeCount) {
+        if (60 <= manager.tick - manager.transitionTimeStamp) {
             return {
                 state: manager.nextState,
                 nextState: null,
-                fadeCount: 0,
+                transitionTimeStamp: manager.transitionTimeStamp,
+                tick: manager.tick + 1,
             };
         }
         return {
             state: manager.state,
             nextState: manager.nextState,
-            fadeCount: manager.fadeCount + 1,
+            transitionTimeStamp: manager.transitionTimeStamp,
+            tick: manager.tick + 1,
         };
     }
-    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.state.board.moveElapse)
-        return makeTransition(manager, createMenu());
-    return manager;
+    if (manager.state.type === "title" && manager.state.board.completed && animationLength < manager.tick - manager.state.board.timeStamp)
+        manager = makeTransition(manager, createMenu());
+    return {
+        state: manager.state,
+        nextState: manager.nextState,
+        transitionTimeStamp: manager.transitionTimeStamp,
+        tick: manager.tick + 1,
+    };
 }
 function clickTitle(pos, title, manager) {
     const title2 = {
         type: "title",
-        board: clickBoard(pos, title.board),
+        board: clickBoard(pos, title.board, manager.tick),
     };
     return {
         state: title2,
         nextState: manager.nextState,
-        fadeCount: manager.fadeCount,
+        transitionTimeStamp: manager.transitionTimeStamp,
+        tick: manager.tick
     };
 }
 function clickMenu(pos, menu, manager) {
     return makeTransition(manager, createGame(menu.levels[0]));
 }
-function clickBoard(pos, board) {
+function clickBoard(pos, board, timeStamp) {
     const coord = posToCoord(pos, board);
     if (!isReachableCoord(coord, board))
         return board;
-    return move(board, coord) || board;
+    return move(board, coord, timeStamp) || board;
 }
 function clickGame(pos, game, manager) {
     if (game.board.completed) {
@@ -296,12 +304,13 @@ function clickGame(pos, game, manager) {
     }
     const game2 = {
         type: "game",
-        board: clickBoard(pos, game.board),
+        board: clickBoard(pos, game.board, manager.tick),
     };
     return {
         state: game2,
         nextState: manager.nextState,
-        fadeCount: manager.fadeCount,
+        transitionTimeStamp: manager.transitionTimeStamp,
+        tick: manager.tick,
     };
 }
 function click(pos, manager) {
@@ -334,18 +343,18 @@ function drawCorrectPieces(screen, board, resources) {
         }
     }));
 }
-function drawPieces(screen, board, resources) {
+function drawPieces(screen, board, resources, tick) {
     board.cells.forEach((row, x) => row.forEach((cell, y) => {
         if (cell !== undefined) {
             const pos = coordToPos({ x, y }, board);
-            screen.globalAlpha = Math.max(Math.min((board.moveElapse - 30) / 10, 1), 0);
+            screen.globalAlpha = Math.max(Math.min((tick - board.timeStamp - 30) / 10, 1), 0);
             if (!board.completed && isReachableCoord({ x, y }, board)) {
                 screen.drawImage(resources.reachable, pos.x - board.params.cellSize / 2, pos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
             }
             screen.globalAlpha = 1;
             if (cell.current !== "blank") {
                 if (x == board.prevPlayer.x && y == board.prevPlayer.y) {
-                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), board.moveElapse);
+                    const animatedPos = animation(coordToPos(board.player, board), coordToPos(board.prevPlayer, board), tick - board.timeStamp);
                     screen.drawImage(resources.pieces[cell.current], animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
                 }
                 else if (!(x == board.player.x && y == board.player.y)) {
@@ -354,7 +363,7 @@ function drawPieces(screen, board, resources) {
             }
         }
     }));
-    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), board.moveElapse);
+    const animatedPos = animation(coordToPos(board.prevPlayer, board), coordToPos(board.player, board), tick - board.timeStamp);
     screen.drawImage(resources.pieces.player, animatedPos.x - board.params.cellSize / 2, animatedPos.y - board.params.cellSize / 2, board.params.cellSize, board.params.cellSize);
     function animation(pos1, pos2, elapse) {
         const rate = Math.min(1, elapse / (animationLength + 10));
@@ -365,16 +374,15 @@ function drawPieces(screen, board, resources) {
         };
     }
 }
-function drawBoard(screen, board, resources) {
-    board.moveElapse++;
+function drawBoard(screen, board, resources, tick) {
     drawGlid(screen, board, resources);
     drawCorrectPieces(screen, board, resources);
-    drawPieces(screen, board, resources);
+    drawPieces(screen, board, resources, tick);
 }
-function drawGame(screen, game, resources) {
-    drawBoard(screen, game.board, resources);
-    if (30 < game.board.moveElapse && game.board.completed) {
-        fade(screen, Math.max(0, Math.min(0.5, (game.board.moveElapse - 30) / 30)));
+function drawGame(screen, game, resources, tick) {
+    drawBoard(screen, game.board, resources, tick);
+    if (30 < tick - game.board.timeStamp && game.board.completed) {
+        fade(screen, Math.max(0, Math.min(0.5, (tick - game.board.timeStamp - 30) / 30)));
         screen.drawImage(resources.completed, 80, 0, 480, 480);
     }
 }
@@ -382,20 +390,20 @@ function drawMenu(screen, menu, resources) {
     screen.fillStyle = "black";
     screen.fillText("menu", 100, 100);
 }
-function drawTitle(screen, title, resources) {
-    drawBoard(screen, title.board, resources);
+function drawTitle(screen, title, resources, tick) {
+    drawBoard(screen, title.board, resources, tick);
     screen.drawImage(resources.title, 80, 0, 480, 480);
 }
-function drawState(screen, state, resources) {
+function drawState(screen, state, resources, tick) {
     switch (state.type) {
         case "menu":
             drawMenu(screen, state, resources);
             break;
         case "game":
-            drawGame(screen, state, resources);
+            drawGame(screen, state, resources, tick);
             break;
         case "title":
-            drawTitle(screen, state, resources);
+            drawTitle(screen, state, resources, tick);
             break;
     }
 }
@@ -413,17 +421,17 @@ function draw(screen, manager, resources) {
     const fadeoutLength = 30;
     screen.clearRect(0, 0, screen.canvas.width, screen.canvas.height);
     if (manager.nextState !== null) {
-        if (manager.fadeCount < 30) {
-            drawState(screen, manager.state, resources);
-            fade(screen, manager.fadeCount / fadeoutLength);
+        if (manager.tick - manager.transitionTimeStamp < 30) {
+            drawState(screen, manager.state, resources, manager.tick);
+            fade(screen, (manager.tick - manager.transitionTimeStamp) / fadeoutLength);
         }
-        if (30 <= manager.fadeCount) {
-            drawState(screen, manager.nextState, resources);
-            fade(screen, (fadeoutLength + fadeinLength - manager.fadeCount) / fadeinLength);
+        if (30 <= manager.tick - manager.transitionTimeStamp) {
+            drawState(screen, manager.nextState, resources, manager.tick);
+            fade(screen, (fadeoutLength + fadeinLength - (manager.tick - manager.transitionTimeStamp)) / fadeinLength);
         }
     }
     else {
-        drawState(screen, manager.state, resources);
+        drawState(screen, manager.state, resources, manager.tick);
     }
 }
 function createScreen(width, height, canvas = document.createElement("canvas")) {
