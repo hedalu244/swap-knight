@@ -370,10 +370,10 @@ function createMenu(): Menu {
             [undefined, "blank", "knight", "rook", "blank", undefined],
         ],
         [
-            [undefined, "rook", "knight", undefined],
+            ["blank", "rook", "knight", "blank"],
             ["pawn", "blank", "blank", "bishop"],
             ["bishop", "blank", "blank", "pawn"],
-            [undefined, "knight", "rook", undefined],
+            ["blank", "knight", "rook", "blank"],
         ],
     ];
     const buttonSize = 100;
